@@ -1,1 +1,1 @@
-# [goldenpathprogramming.com/](goldenpathprogramming.com/)
+# [https://goldenpathprogramming.com/](https://goldenpathprogramming.com/)
