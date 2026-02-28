@@ -50,6 +50,7 @@ int main () {
     tcsetattr (0, TCSANOW, &settings_new);
     defer { tcsetattr (0, TCSANOW, &settings_old); }
 
+    bool quit = false;
     bool restart_multiple_attempts = false;
     while (restart_audio && !quit) {
         if (restart_multiple_attempts > 0) sleep (1);
@@ -98,7 +99,6 @@ int main () {
 
         restart_audio = restart_multiple_attempts = false;
         
-        bool quit = false;
         while (!quit && !restart_audio) {
             UInt32 is_running = 0;
             if (AudioUnitGetProperty(tone_unit, kAudioOutputUnitProperty_IsRunning, kAudioUnitScope_Global, 0, &is_running, &(UInt32){sizeof(is_running)}) != noErr || !is_running) {

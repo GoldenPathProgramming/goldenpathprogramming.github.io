@@ -26,7 +26,8 @@
     <code>clang main.m -fdefer-ts -framework AudioUnit -framework CoreAudio</code>
     <hr/>
 
-    <code>    bool restart_multiple_attempts = false;
+    <code>    bool quit = false;
+    bool restart_multiple_attempts = false;
     while (restart_audio && !quit) {
         if (restart_multiple_attempts > 0) sleep (1);
         restart_multiple_attempts = true;</code>
