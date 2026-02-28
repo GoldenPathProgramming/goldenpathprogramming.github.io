@@ -8,7 +8,7 @@
 <body>
     <script src="/scripts/header.js"></script>
 
-    <h2>Installing MacOS SDK, LLDB, GCC, Clang, CMake, and Git on MacOS</h2>
+    <h2>Installing MacOS SDK, LLDB, Clang, CMake, and Git on MacOS</h2>
 
     <p>First, install Xcode Command Line Tools. Open a terminal and type:</p>
     <code>xcode-select --install</code>
@@ -16,16 +16,11 @@
     <p>Now install Homebrew:</p>
     <code>/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"</code>
 
-    <p>Install GCC, Clang and CMake with Homebrew:</p>
-    <code>brew install gcc llvm cmake</code>
+    <p>Install Clang and CMake with Homebrew:</p>
+    <code>brew install llvm cmake</code>
     
-    <p>Mac builds in an alias so that gcc redirects to clang. Several workarounds are available, but the easiest is just to use "gcc-XX" to invoke GCC. At time of writing, GCC is in version 15, so gcc-15 runs the installed (latest) gcc. You can also make sure GCC gets used by CMake for C compilation by prepending "CC=gcc-15" to your cmake command. You may also want "OBJC=clang" to keep using clang for Objective-C code.</p>
-
-    <p>Try typing "gcc --version" and you should get a Clang version back.</p>
-
     <p>Check your installation with the following commands (press enter after each one and check the output):</p>
-    <code>gcc-15 --version
-clang --version
+    <code>clang --version
 cmake --version
 lldb --version
 git --version</code>
