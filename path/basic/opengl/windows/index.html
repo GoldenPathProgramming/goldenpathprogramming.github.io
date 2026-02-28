@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/scripts/head.js"></script>
+</head>
+
+<body>
+    <script src="/scripts/header.js"></script>
+
+    <h2>Initializing OpenGL on Windows</h2>
+
+    <h3 style="text-align:left;">References</h3>
+    <ul>
+        <li><a href="https://learn.microsoft.com/en-us/windows/win32/api/" target="_blank">Win32 Documentation</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-pixelformatdescriptor" target="_blank">PIXELFORMATDESCRIPTOR reference</a></li>
+        <li><a href="https://registry.khronos.org/OpenGL-Refpages/gl2.1/" target="_blank">OpenGL 2.1, GLX, GLU reference pages</a></li>
+        <li><a href="https://registry.khronos.org/OpenGL/index_gl.php" target="_blank">OpenGL specifications and references</a></li>
+    </ul>
+
+    <image src="assets/screenshot.webp"/>
+
+    <p>While it's possible to draw pixels to a Win32 window with built-in Win32/GDI functions, they are quite slow. If you're curious, feel free to look it up, but I'm going to skip straight to creating an OpenGL context in the window. OpenGL is a very featureful API for programming graphics processors, but we'll be using it sparingly. For now, we'll just draw the classic, "Hello Triangle."</p>
+
+    <script src="/scripts/embed-code.js" data-src="src/main.c"></script>
+    <p>Build with:</p>
+    <code>gcc main.c -lopengl32 -lgdi32</code>
+
+    <hr/>
+
+    <code>    const auto window_context = GetDC (window_handle);
+    const PIXELFORMATDESCRIPTOR format_descriptor = {
+        .nSize = sizeof (PIXELFORMATDESCRIPTOR),
+        .nVersion = 1,
+        .dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
+        .iPixelType = PFD_TYPE_RGBA,
+        .cColorBits = 24,
+        .cRedBits = 8, .cGreenBits = 8, .cBlueBits = 8, .cAlphaBits = 8,
+		.cDepthBits = 24, .cStencilBits = 8,
+    };
+    const int pixel_format = ChoosePixelFormat (window_context, &format_descriptor); assert (pixel_format);
+    { const auto result = SetPixelFormat (window_context, pixel_format, &format_descriptor); assert (result); }</code>
+    <p>First, we need to define a pixel format. I've filled it in with the standard values you will probably always use. See the PIXELFORMATDESCRIPTOR reference for all possible options.</p>
+
+    <code>    const auto glcontext = wglCreateContext (window_context); assert (glcontext);</code>
+    <p>OpenGL requires a "context," which is your link into OpenGL, holding all your rendering information and associated with every OpenGL command you run. <b>wglCreateContext does not guarantee which version your context will be.</b> If you want check that your program has access to features beyond OpenGL 1.0, see <a href="/oasis/enhancement/opengl_version/">this tutorial to check your context version</a>, and <a href="/oasis/enhancement/opengl_request/windows/">this tutorial to request a specific version and profile.</a> These days, since OpenGL isn't getting new versions, all modern systems will give you a 4.6 compatibility context (except MacOS, which offers 2.1 legacy, 3.2 core, or 4.1 core). "Compatibility" means old, deprecated APIs are supported.</p>
+
+    <code>    { const auto result = wglMakeCurrent (window_context, glcontext); assert (result); }</code>
+    <p>After creating a context, but before using it, you must call this function. This assigns the window as the drawable surface of the context, and sets it as the currently active context for this thread.</p>
+
+    <code>    printf ("OpenGL version: %s\n", glGetString (GL_VERSION));</code>
+    <p>Check what version your profile prints as. You should expect something like, "OpenGL version: 4.6 (Compatibility Profile)". At time of writing, all modern OpenGL drivers give you a compatibility profile which has support for old OpenGL APIs, but if you have problems, make sure you're getting a compatibility profile version.</p>
+
+    <code>        case WM_SIZE: {
+            glViewport (0, 0, LOWORD(lParam), HIWORD(lParam));
+            glMatrixMode (GL_PROJECTION);
+            glLoadIdentity ();
+         } break;</code>
+    <p>Whenever the window is resized, we reset the OpenGL viewport. When you first call wglMakeCurrent, the viewport is set to the area of the window, but it doesn't automatically update after that. Here's also where you'll usually set up your projection matrix, which tells OpenGL how to mathematically translate from rendering coordinates to screen coordinates.</p>
+
+    <code>    glClearColor (0, 0, 0, 0);</code>
+    <p>You can tell OGL what value to use for clearing - try changing these values.</p>
+
+    <code>        glClear (GL_COLOR_BUFFER_BIT);
+
+        glBegin (GL_TRIANGLES);
+            glColor3f (1, 0, 0);
+            glVertex3f (-1, -1, 0);
+            glColor3f (0, 1, 0);
+            glVertex3f (1, -1, 0);
+            glColor3f (0, 0, 1);
+            glVertex3f (0, 1, 0);
+        glEnd ();
+
+        SwapBuffers (window_context);</code>
+    <p>This is a simple rendering pass. The drawing surface is cleared (based on the clear color set before), and we pass in some color and vertex information to draw a triangle. The identity projection matrix maps the viewport to horizontal and vertical axes of -1 to 1, so this triangle stretches to the corners and top-middle of the window. You'll see that OpenGL blends colors between the vertices.</p>
+    <p>When creating the pixel format, we specified, "PFD_DOUBLEBUFFER," which means we want 2 rendering buffers. One is displayed while the other is drawn into, then, when drawing is complete, we swap the buffers wholesale. This prevents the user seeing the individual drawing operations and only shows them complete frames. SwapBuffers is the function used to... swap the buffers.</p>
+    <p>Try moving this code to the WM_PAINT section, before ValidateRect, and you'll notice that the redraw works continuously while resizing the window, whereas the code as I've written it doesn't redraw the window while resizing.</p>
+
+    <p>If you'd like to learn more about legacy OpenGL, I recommend the book, "OpenGL Superbible 4th Edition," which covers version 2.1 quite well.</p>
+
+    <script src="/scripts/prev-next-step.js" path_prev="../../event_loop/windows/" path_next="../../audio/windows/"></script>
+
+    <script src="/scripts/footer.js"></script>
+</body>
+
+</html>

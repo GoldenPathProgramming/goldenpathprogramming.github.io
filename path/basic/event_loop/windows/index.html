@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/scripts/head.js"></script>
+</head>
+
+<body>
+    <script src="/scripts/header.js"></script>
+
+    <h2>Event Loop with Win32 on Windows</h2>
+
+    <h3 style="text-align:left;">References</h3>
+    <ul>
+        <li><a href="https://learn.microsoft.com/en-us/windows/win32/api/" target="_blank">Win32 Documentation</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/windows/win32/learnwin32/writing-the-window-procedure" target="_blank">Window Procedure Reference</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes" target="_blank">Virtual-Key Codes</a></li>
+    </ul>
+
+    <p>This time we'll use our own Window Procedure and handle events.</p>
+
+    <script src="/scripts/embed-code.js" data-src="src/main.c"></script>
+    <p>Build with:</p>
+    <code>gcc main.c</code>
+    <hr/>
+
+    <code>#define WINVER _WIN32_WINNT_WIN10
+#define _WIN32_WINNT WINVER</code>
+    <p>You can use these macros to define which minimum version of Windows your program is targetting. Here I've selected Windows 10, which enables the gamepad virtual key codes. Feel free to remove these definitions and the keycodes which become unavailable if you're using an older Windows version.</p>
+
+    <code>        .lpfnWndProc = WindowProc,</code>
+    <p>In the window class structure, we assign our own window procedure to handle messages. Since you retrieve messages with Peek/GetMessage, you might think you could just call your window procedure directly, without setting this value and using DispatchMessage. However, in some cases, Windows calls your window procedure directly.</p>
+
+    <code>    while (!quit) {
+        MSG message;
+        while (PeekMessage (&message, NULL, 0, 0, PM_REMOVE)) {
+            if (message.message == WM_QUIT) {
+                puts ("Quitting");
+                quit = true;
+            }
+            else DispatchMessage (&message);
+        }
+    }</code>
+    <p>This loop runs continuously until the WM_QUIT message comes in. WM_QUIT is a special message which cannot be send to your window procedure, and should be handled separately. All other messages get forwarded to the window procedure via DispatchMessage.</p>
+
+    <code>static LRESULT CALLBACK WindowProc(HWND window_handle, UINT message, WPARAM wParam, LPARAM lParam) {
+    switch (message) {</code>
+    <p>The window procedure receives the handle to the associated window (in a single-window application, this is always your window), the message, and two parameters which contain extra data. We switch on the message value to handle each one.</p>
+
+    <code>        case WM_DESTROY: PostQuitMessage (0); break;</code>
+    <p>WM_DESTROY is called when your window is destroyed. I like to call PostQuitMessage to add a WM_QUIT message to the queue - that way, I can handle "quitting" in a single place.</p>
+
+    <code>        case WM_PAINT: ValidateRect (window_handle, NULL); break;</code>
+    <p>This is where you'd put rendering code if you were to use Win32 rendering APIs such as GDI. I'll skip this and go straight to OpenGL, but feel free to look into it. I just call ValidateRect to tell Windows that the window has been redrawn.</p>
+
+    <code>        case WM_SYSKEYDOWN:
+        case WM_KEYDOWN:
+        case WM_SYSKEYUP:
+        case WM_KEYUP: {
+            bool key_down = ((lParam & (1 << 31)) == 0);
+            if (key_down && (lParam & (1 << 30))) {
+                puts ("Key repeat");
+                break;
+            }
+            printf ("Key %s %s\n", key_down ? "pressed" : "released", vk_print[wParam & 0xff]);
+        }</code>
+    <p>WM_KEYDOWN/UP are the normal key messages, but if ALT is being held, you'll receive the SYS versions instead. I like to just internally track the state of keys in my programs so I lump them together. Since I've combined up and down events, I retrieve the up/down state of the key from lParam, and check for key repeats (when holding a key causes more events to be sent). I've prepared the vk_print[] array of strings so we can print out the keys being pressed.</p>
+
+    <code>        default: return DefWindowProc (window_handle, message, wParam, lParam);
+    }
+    return 0;</code>
+    <p>For any message we don't handle, we pass it on to DefWindowProc. Otherwise, we return 0 to tell Windows we've handled the message.</p>
+
+    <script src="/scripts/prev-next-step.js" path_prev="../../window/windows/" path_next="../../opengl/windows/"></script>
+
+    <script src="/scripts/footer.js"></script>
+</body>
+
+</html>

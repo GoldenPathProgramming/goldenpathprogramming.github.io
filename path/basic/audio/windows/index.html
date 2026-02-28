@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/scripts/head.js"></script>
+</head>
+
+<body>
+    <script src="/scripts/header.js"></script>
+
+    <h2>Sound with WASAPI on Windows</h2>
+
+    <h3 style="text-align:left;">References</h3>
+    <ul>
+        <li><a href="https://learn.microsoft.com/en-us/windows/win32/api/" target="_blank">Win32 Documentation</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/windows/win32/api/_coreaudio/" target="_blank">Core Audio API reference</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/windows/win32/coreaudio/wasapi" target="_blank">WASAPI reference</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/windows/win32/com/the-com-library" target="_blank">The COM library</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/windows/win32/api/audiosessiontypes/ne-audiosessiontypes-audio_stream_category" target="_blank">Audio session types (AudioCategory_GameEffects)</a></li>
+        <li><a href="http://shanekirk.com/2015/10/a-brief-history-of-windows-audio-apis/" target="_blank">A Brief History of Windows Audio APIs</a></li>
+    </ul>
+
+    <p>I'll be frank with you: WASAPI is ridiculously overcomplicated for just outputting audio. However, it's necessary to use WASAPI on Windows if you want low latency. The code is stupidly long, so I'm going to mostly summarize important parts and refer you to the MSDN documentation for further study.</p>
+    <p>We'll initialize a low-latency audio output buffer into which we can feed blocks of bytes representing any sound. It also automatically handles device switching when the default device changes, and recovers and restarts when the device is lost. Running the code below gives a console program which outputs a square wave sound. Press up/down on your keyboard to adjust the frequency, and escape/q/k to quit the program.</p>
+
+    <a href="src/source.zip" download>Download the code.</a>
+    <p>Build with:</p>
+    <code>gcc main.c -lOle32 -lAvrt -lksuser</code>
+    <p>I've separated the code into 3 C files. All the setup is in main.c, and the loop which outputs the sound is in sound_func.c. stuff.c has extra stuff which made the main code harder to read. The code contains loads of macros designed to catch and print errors to help you figure it out when you start changing things. The code snippets below will be stripped of all those extras (except defer) for readability.</p>
+    <p>Note: Due to the defer macro, this code can only be compiled with GCC. Hopefully defer will be added in C2Y - otherwise, you can remove the defer calls without too much trouble.</p>
+    <hr/>
+
+    <code>int main () {
+    CoInitializeEx(NULL, 0);
+    defer (CoUninitialize());
+
+	{ DWORD task_index = 0; AvSetMmThreadCharacteristics(TEXT("Pro Audio"), &task_index); }
+
+	IMMDeviceEnumerator *device_enumerator = NULL;
+	CoCreateInstance(&CLSID_MMDeviceEnumerator, NULL, CLSCTX_ALL, &IID_IMMDeviceEnumerator, (void**)&device_enumerator);</code>
+    <p>WASAPI relies on the Windows COM library, which must be initialized (and before closing, uninitialized). We set the thread priority to "Pro Audio". "Games" is another option, but Pro Audio guarantees lower latency if available, and higher priority over other threads. Then we create a device enumerator which will be used to retrieve the audio devices.</p>
+
+    <code>while (restart_audio) {
+        restart_audio = false;</code>
+    <p>I wrapped all the audio setup code in this loop so that it can be automatically re-run just by setting this restart_audio variable on certain errors. This allows sound recovery without restarting the program.</p>
+
+    <code>client->lpVtbl->IsFormatSupported (client, AUDCLNT_SHAREMODE_SHARED, &wave_format.Format, &wave_format_closest);</code>
+    <p>While we can request a certain audio format (signed 16-bit PCM 48KHz), WASAPI is by no means guaranteed to give it to us, so we need to handle various kinds of output formats. I'm under the impression that it's only important to support the variants of PCM and float - the rest are compressed formats which Windows shouldn't ever require from your application.</p>
+
+    <code>static IMMNotificationClient notification_client = {
+    .lpVtbl = &(struct IMMNotificationClientVtbl){
+        MMNotificationClient_QueryInterface,
+        MMNotificationClient_AddRef,
+        MMNotificationClient_Release,
+        MMNotificationClient_OnDeviceStateChanged,
+        MMNotificationClient_OnDeviceAdded,
+        MMNotificationClient_OnDeviceRemoved,
+        MMNotificationClient_OnDefaultDeviceChange,
+        MMNotificationClient_OnPropertyValueChanged,
+    }
+};
+
+    device_enumerator->lpVtbl->RegisterEndpointNotificationCallback (device_enumerator, &notification_client);</code>
+    <p>This notification callback business allows us to receive several types of notifications. The key one is OnDefaultDeviceChange - if you want to automatically output to the default device, this notification is how you find out it has changed so you can restart your audio system. Like everything Microsoft wrote after the Windows XP days, it is insanely overcomplicated.</p>
+
+    <p>Everything else in main.c is either self-explanatory from the names involved, or cannot be easily explained without simply referring to the documentation - so I encourage you to read through the main function, and look up each thing in Microsoft's docs. Good luck!</p>
+
+    <p>I separated the actual sound output loop function into a separate file so that is can be #included with a couple of macros to create a version for ints and one for floats. Let's look at that now.</p>
+
+    <code>void funcname__ (WAVEFORMATEXTENSIBLE wave_format, HANDLE event_handle, IAudioRenderClient *render, UINT32 frames_per_period) {
+    type__ maxval;
+    _Generic(type__, 
+        float: maxval = 1,
+        int32_t: maxval = (1 &lt;&lt; (wave_format.Samples.wValidBitsPerSample-1))
+    );</code>
+    <p>When we output samples to WASAPI, it'll require them in either int or float formats. While the container format may be, say, int32_t, the actual valid bits may only be perhaps 24. In that case, we need to scale our output samples to fit within the valid bit width.</p>
+
+    <code>        if (_kbhit ()) {</code>
+    <p>This section just provides a console-based input for testing the program - up/down arrow keys to change frequency, and q/k/escape to quit.</p>
+
+    <code>		{ // Wait for next buffer event to be signaled.
+            DWORD result = WaitForSingleObject(event_handle, 1000);
+            if (result != WAIT_OBJECT_0) {
+                LOG ("WaitForSingleObject failed. Error code [%lu] [%s]", result, result == WAIT_ABANDONED ? "WAIT_ABANDONED" : result == WAIT_TIMEOUT ? "WAIT_TIMEOUT" : result == WAIT_FAILED ? "WAIT_FAILED" : "Unknown");
+                restart_audio = true;
+                break;
+            }
+        }</code>
+    <p>We need to wait for this event_handle object, which is how WASAPI notifies us that it's ready for more samples. I've set a timeout of 1 second before restarting the whole audio process, as I've had this get stuck waiting infinitely under unusual circumstances (hardware issues, for example). Best to restart if it ever takes too long to respond, since we're expecting this to be no more than 10ms even on older hardware.</p>
+
+    <code>		HRESULT result = render->lpVtbl->GetBuffer (render, frames_per_period, &data);</code>
+    <p>WASAPI gives us a pointer to the memory where we can put our samples. If the device gets invalidated or service gets closed somehow, we can try to restart everything. For all the other errors, I'm not actually too sure whether it's better to just retry getting a new buffer or restart the whole audio process.</p>
+
+    <code>        for (int i = 0; i &lt; frames_per_period; ++i) {
+            static uint16_t sound_counter = 0;
+            type__ sample = sound_counter &lt; wavelength/2 ? maxval : -maxval;
+            if (++sound_counter >= wavelength) sound_counter = 0;
+            for (int j = 0; j &lt; wave_format.Format.nChannels; ++j) {
+                *(type__*)data = sample;
+                data += bytes_per_sample;
+            }
+        }</code>
+    <p>A "frame" is one sample for each audio channel - if we're rendering stereo at 48KHz, then it's two values representing 1/48000th of a second of audio for each channel. The sound_counter stuff is just a way to generate a square wave. I just output the same sample to all channels - duplicating a mono sound sample to all speakers being used.</p>
+
+    <code>render->lpVtbl->ReleaseBuffer (render, frames_per_period, 0);</code>
+    <p>We release the buffer, telling WASAPI that it now contains frames_per_period valid frames of data to output.</p>
+
+    <script src="/scripts/prev-next-step.js" path_prev="../../opengl/windows/" path_next="/#oasis1" label_next="Continue the Path"></script>
+
+    <script src="/scripts/footer.js"></script>
+</body>
+
+</html>

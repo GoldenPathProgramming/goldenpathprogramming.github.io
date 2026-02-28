@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/scripts/head.js"></script>
+</head>
+
+<body>
+    <script src="/scripts/header.js"></script>
+
+    <h2>Opening a Window with Xlib on Linux</h2>
+
+    <h3 style="text-align:left;">References</h3>
+    <ul>
+        <li><a href="https://www.x.org/releases/current/doc/libX11/libX11/libX11.html" target="_blank">Xlib documentation</a></li>
+    </ul>
+
+    <image src="assets/window.webp"/>
+
+    <p>Xlib is the main system library used to create windows on Linux. Nowadays, X11 is being replaced with Wayland, but Wayland supports the Xlib API (through XWayland), so a program written with Xlib is automatically compatible with both X11 and Wayland. I personally have also found the Xlib API superior to the Wayland API for my purposes.</p>
+
+    <p>The below code is the Xlib-equivalent of, "Hello, World!"</p>
+
+    <script src="/scripts/embed-code.js" data-src="src/main.c"></script>
+
+    <p>Copy the above code into a file and name it main.c. Then open a terminal in the same directory and run the following command:</p>
+    <code>gcc main.c -lX11</code>
+    <p>You shouldn't see any output in your terminal, but in the folder an a.out file should have been created. This is your executable binary file. Run it with ./a.out. You should see a 640x480 window pop up with a greyish-purple background, then close after 5 seconds.</p>
+    <hr/>
+
+    <code><text>#include &lt;X11/Xlib.h>
+#include &lt;unistd.h>
+#include &lt;assert.h></text></code>
+    <p>The X11 folder contains all the Xlib headers we'll use for window management on Linux. Xlib.h is the main one - we'll use a few more in future for special functionality. unistd is included for the sleep() function, and assert for assertions. I've chosen to include assertions as a way to help you catch bugs as you follow the Path, so you'll see them often.</p>
+
+    <code>    const auto display = XOpenDisplay (0);
+    assert (display);</code>
+    <p>XOpenDisplay initiates a connection to an X server. X11 is designed as a client-server model, as it originated in the 80s when shared central computers were accessed from multiple remote terminals. On a single computer system, and in the context we'll be using it, the client-server model doesn't make a whole lot of sense, but it doesn't much get in the way either. Passing NULL causes it to automatically use the DISPLAY environment variable, which will be the default display. It returns a Display pointer, or NULL on failure, thus the assertion right afterward. The Display structure has information about available screens, bit depths and such. Since the early 2000s, everything supports 24-bit color so there isn't much <i>need</i> to delve into those details anymore, but further research is always encouraged.</p>
+
+    <code>    const auto root_window = DefaultRootWindow(display);
+    const auto screen = DefaultScreen (display);</code>
+    <p>These are both just macros used to access specific members of the Display structure. Use your intellisense or look up the definitions to see how they work. If you have a valid Display, these cannot fail. X11 windows exist as a parent-child hierarchy, and child windows are constrained to their parent. The DefaultRootWindow is just the highest node in that hierarchy, meaning its children are normal standalone windows. DefaultScreen gets the... default screen. If you want to iterate all available screens, you can look into ScreenCount and ScreenOfDisplay.</p>
+
+    <code>    const auto window = XCreateSimpleWindow(display, root_window, 0, 0, 640, 480, 0, 0, 0x403a4d);</code>
+    <p>XCreateSimpleWindow is basically XCreateWindow with a couple of specific features left out - we'll get around to them next time. All X11 functions you call will require a Display pointer, which has information about your connection to the X server. It needs a parent window, screen position (in pixels from top-left), size (width and height in pixels), border width and colour (apocryphal - just use 0), background colour. Background colour is a 24-bit value, where the low byte is blue, middle byte green, high byte red. I've written a colour in hexadecimal so that each 2-digit pair is one colour channel. You might try different combinations of ff and 00 to isolate each colour channel.</p>
+
+    <p>I wish XCreateSimpleWindow would just return an error on failure, but instead, if Xlib encounters an error it'll call out to an error handling callback function. Later we'll explore overriding that callback to handle errors ourselves, but for now if something goes wrong, the builtin error handler should print the error to stderr.</p>
+
+    <code>    XMapWindow (display, window);</code>
+    <p>Windows in X11 don't get automatically shown on the screen - they must be "mapped".</p>
+
+    <code>    XFlush (display);</code>
+    <p>Due to the client-server architecture, some Xlib functions are asynchronous. This means they may be queued up but not executed right away. In order to tell the server to execute everything now, we call this function. It won't return until all previous Xlib calls have completed. Finally, the program sleeps for a few seconds just to give the window a chance to show before exiting.</p>
+
+    <code>gcc main.c -lX11</code>
+    <p>The code is built with a simple gcc call, and links with X11.</p>
+
+    <script src="/scripts/prev-next-step.js" path_prev="/#path1" label_prev="Home" path_next="../../event_loop/linux/"></script>
+
+    <script src="/scripts/footer.js"></script>
+</body>
+
+</html>

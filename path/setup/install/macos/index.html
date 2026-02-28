@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/scripts/head.js"></script>
+</head>
+
+<body>
+    <script src="/scripts/header.js"></script>
+
+    <h2>Installing MacOS SDK, LLDB, GCC, Clang, CMake, and Git on MacOS</h2>
+
+    <p>First, install Xcode Command Line Tools. Open a terminal and type:</p>
+    <code>xcode-select --install</code>
+
+    <p>Now install Homebrew:</p>
+    <code>/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"</code>
+
+    <p>Install GCC, Clang and CMake with Homebrew:</p>
+    <code>brew install gcc llvm cmake</code>
+    
+    <p>Mac builds in an alias so that gcc redirects to clang. Several workarounds are available, but the easiest is just to use "gcc-XX" to invoke GCC. At time of writing, GCC is in version 15, so gcc-15 runs the installed (latest) gcc. You can also make sure GCC gets used by CMake for C compilation by prepending "CC=gcc-15" to your cmake command. You may also want "OBJC=clang" to keep using clang for Objective-C code.</p>
+
+    <p>Try typing "gcc --version" and you should get a Clang version back.</p>
+
+    <p>Check your installation with the following commands (press enter after each one and check the output):</p>
+    <code>gcc-15 --version
+clang --version
+cmake --version
+lldb --version
+git --version</code>
+
+    <p>At time of writing, Apple's XCode is not based on the latest llvm version 22, but some of my code requires this version or later. You've installed Clang via Homebrew, but make sure the output of "clang --version" is something like, "Homebrew clang version xxx," not "Apple clang version xxx." If yours reports an Apple Clang version, type this command into your terminal:</p>
+    <code>echo 'export PATH="/opt/homebrew/opt/llvm/bin:$PATH"' >> ~/.zshrc</code>
+    <p>Restart your terminal and check again.</p>
+
+    <script src="/scripts/prev-next-step.js" path_prev="/#way0" label_prev="Back to the Path" path_next="../../sanity/macos/"></script>
+
+    <script src="/scripts/footer.js"></script>
+</body>
+
+</html>

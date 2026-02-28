@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/scripts/head.js"></script>
+</head>
+
+<body>
+    <script src="/scripts/header.js"></script>
+
+    <h2>Sanity check on Windows</h2>
+
+    <p>Tutorials can be incredibly frustrating when the first few steps work, but halfway through, for some reason, it stops working on your machine! That's why you're now going to clone the Croaking Kero Game Framework repository (the source code to my game framework, which the Path is based upon) and build it from source! If this works on your machine, you can proceed with confidence, knowing that every step of the path will work for you - and if you run into any problems, you'll have a complete project to compare against.</p>
+
+    <p>Open a terminal window and type the following commands (you can paste them into your terminal with CTRL+Shift+V):</p>
+
+<code>mkdir ~/goldenpath
+cd ~/goldenpath
+git clone ssh://git@codeberg.org/UltimaN3rd/Croaking_Kero_Game_Framework.git ckgf
+cd ckgf
+mkdir build
+cd build
+cmake ..
+cd ..
+cmake --build build
+build/flappy.exe
+</code>
+
+    <p>A simple Flappy Bird game should launch, including a menu, saving/loading high score and configuration, sound, etc. The game example provided is simple, but you've just successfully built the whole game framework - which I've used to release commercial games on Steam.</p>
+
+    <p>If you have problems, read the output of the failed command carefully. If you can't figure it out, search the <a href="/community.html">Community</a> for a solution to your specific issue.</p>
+
+    <script src="/scripts/prev-next-step.js" path_prev="../../install/windows/" path_next="/#oasis0" label_next="Continue the Path"></script>
+
+    <script src="/scripts/footer.js"></script>
+</body>
+
+</html>

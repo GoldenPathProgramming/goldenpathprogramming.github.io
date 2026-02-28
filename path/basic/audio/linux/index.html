@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/scripts/head.js"></script>
+</head>
+
+<body>
+    <script src="/scripts/header.js"></script>
+
+    <h2>Sound with Pulse on Linux</h2>
+
+    <h3 style="text-align:left;">References</h3>
+    <ul>
+        <li><a href="https://freedesktop.org/software/pulseaudio/doxygen/" target="_blank">PulseAudio Documentation</a></li>
+    </ul>
+
+    <p>We'll initialize a simple, low-latency audio output buffer into which we can feed blocks of bytes representing any sound. It also automatically handles device switching when the default device changes. Running the code below gives a console program which outputs a square wave sound. Press up/down on your keyboard to adjust the frequency, and escape/q/k to quit the program.</p>
+
+    <script src="/scripts/embed-code.js" data-src="src/main.c"></script>
+    <p>Build with:</p>
+    <code>gcc main.c -lpulse -lpulse-simple</code>
+    <hr/>
+
+    <code>#include &lt;pulse/simple.h>
+#include &lt;pulse/error.h></code>
+    <p>PulseAudio is the POSIX sound subsystem which gives us easy access to sound output, without having dealing with hardware details. Pulse has a simple, synchronous API and a more complex async API. For outputting raw bytes, the simple API has everything we need.</p>
+
+    <code>    int pulse_error = 0;
+    pa_simple *simple;
+    pa_sample_spec sample_spec = {
+        .format = PA_SAMPLE_S16LE,
+        .rate = SAMPLING_RATE,
+        .channels = 1
+    };
+    pa_buffer_attr buffer_attr = {
+        .maxlength = PERIOD_SIZE * 16,
+        .tlength = PERIOD_SIZE * 2,
+        .prebuf = PERIOD_SIZE * 2,
+        .minreq = UINT32_MAX,
+        .fragsize = PERIOD_SIZE * 2,
+    };
+    simple = pa_simple_new (NULL, "Golden Path", PA_STREAM_PLAYBACK, NULL, "playback", &sample_spec, NULL, &buffer_attr, &pulse_error);
+    if (!simple) {
+        printf ("Failed to initialize PulseAudio: %s\n", pa_strerror(pulse_error));
+        assert (false);
+    }</code>
+    <p>Here we dictate the properties of the audio stream we want to open. I've specified an output-only stream with signed, 16-bit little-endian data at a rate of 48Khz and one channel. The buffer attributes are such that the latency will be minimized; aiming at 5ms. The stream is created with pa_simple_new. Pulse returns errors through a pointer you pass in to each function, which I've named pulse_error. Clearly based on errno, you can get a readable error message from it with pa_strerror(). If you have any problems, read the error output and see if you can figure it out from the PulseAudio documentation linked at the top of this page. Also check the documentation for all the different possible attributes and specifications available.</p>
+
+    <code>        for (int i = 0; i &lt; PERIOD_SIZE; ++i) {
+            buffer[i] = sound_counter &lt; wavelength/2 ? INT16_MIN : INT16_MAX;
+            if (++sound_counter >= wavelength) sound_counter = 0;
+        }</code>
+    <p>We fill a buffer with sound samples. To produce a square wave, we just swap between the minimum and maximum values every wavelength/2 samples. The wavelength is calculated in the CalculateWavelength() function.</p>
+
+    <code>        const auto result = pa_simple_write (simple, buffer, sizeof(buffer), &pulse_error);</code>
+    <p>Then we just send the buffer to PulseAudio. Using the simple API, this call blocks until the server is finished copying over the data. If you want asynchronous copying, you can look into the async API. In my game framework, sound runs on its own thread, so blocking on data writes is fine.</p>
+
+    <script src="/scripts/prev-next-step.js" path_prev="../../opengl/linux/" path_next="/#oasis1" label_next="Continue the Path"></script>
+
+    <script src="/scripts/footer.js"></script>
+</body>
+
+</html>

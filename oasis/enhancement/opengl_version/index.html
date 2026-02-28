@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/scripts/head.js"></script>
+</head>
+
+<body>
+    <script src="/scripts/header.js"></script>
+
+    <h2>Checking OpenGL context version</h2>
+
+    <h3 style="text-align:left;">References</h3>
+    <ul>
+        <li><a href="https://wikis.khronos.org/opengl/OpenGL_Context" target="_blank">OpenGL Context official wiki page</a></li>
+        <li><a href="https://registry.khronos.org/OpenGL-Refpages/" target="_blank">OpenGL reference pages</a></li>
+        <li><a href="https://registry.khronos.org/OpenGL/index_gl.php" target="_blank">OpenGL specifications and references</a></li>
+    </ul>
+
+    <p>Place the following code in your program. Other than the #include and typedef, it goes after the call to glMakeCurrent:</p>
+    <script src="/scripts/embed-code.js" data-src="src/main.c"></script>
+    <hr/>
+
+    <code>typedef union {
+    struct { uint8_t major, minor; };
+    uint16_t full;
+} glversion_t;</code>
+    <p>This is a convenient type I made in order to be able to compare versions easily.</p>
+
+    <code>    const char *gl_version_string = (const char *)glGetString (GL_VERSION); assert (gl_version_string); assert (strlen(gl_version_string) >= 3);
+    printf ("OpenGL version string: %s\n", gl_version_string);
+    const char major = gl_version_string[0]; assert (major >= '1' && major <= '4');
+    const char minor = gl_version_string[2]; assert (major >= '0' && major <= '6');
+
+    glversion_t glversion = {.major = major - '0', .minor = minor - '0'};
+    printf ("GL major.minor version: %d.%d\n", glversion.major, glversion.minor);</code>
+    <p>The GL_VERSION string has been available since OpenGL 1.0, so it's guaranteed to exist in any OpenGL context. You can use it to check the major.minor version of your context. If these values come back as anything from 1.0 to 3.0, you have all the information you need and your context supports all functionality from the given version and earlier.</p>
+
+    <code>    if (glversion.full >= (glver_t){.major=3,.minor=2}.full) { // Verion 3.2 onward have core and compatibility profiles. Core removes deprecated functionality.
+        int context_profile = 0;
+        glGetIntegerv (GL_CONTEXT_PROFILE_MASK, &context_profile);
+        if (context_profile & GL_CONTEXT_COMPATIBILITY_PROFILE_BIT) printf ("Compatibility context\n");
+        else if (context_profile & GL_CONTEXT_CORE_PROFILE_BIT) printf ("Core context\n");
+        else printf ("Unable to retrieve GL_CONTEXT_PROFILE_MASK even though version is >= 3.2???\n");
+    }</code>
+    <p>In OpenGL 3.2, "profiles" were introduced. From 3.2 on, an OpenGL implementation is only required to implement the "core" profile - the main API with all deprecated funcionality removed. "Compatibility" profiles also include the older, deprecated functionality and effectively support the reported version and all previous API versions. These days, all modern drivers implement a 4.0+ compatibility profile so you can expect to practically always have the old APIs supported.</p>
+
+    <code>    else if (glversion.full == (glver_t){.major=3,.minor=1}.full) { // Version 3.1 removed deprecated functionality, but did not have profiles yet.
+        const char *extensions = (const char *)glGetString (GL_EXTENSIONS); assert (extensions);
+        if (strstr (extensions, "GL_ARB_compatibility")) printf ("GL_ARB_compatibility is present\n");
+        else printf ("GL_ARB_compatibility NOT present\n");
+    }</code>
+    <p>OpenGL 3.1 is unique in that in removed the functionality that was deprecated in 3.0, but did not introduce profiles. Instead, old API support is reported through the GL_ARB_compatibility extension, which we search for in the GL_EXTENSIONS string. If your context version is 3.1, but GL_ARB_compatibility is not supported, the deprecated APIs are not supported. In practice, you will probably never encounter this.</p>
+    <p>When getting started with OpenGL, I recommend targetting one specific API version. Later, when you have more experience, you can expand into supporting multiple API versions in order to guarantee wider compatibility with your shipping software.</p>
+
+    <script src="/scripts/prev-next-step.js" path_next="/#oasis1" label_next="Back to the Path"></script>
+
+    <script src="/scripts/footer.js"></script>
+</body>
+
+</html>

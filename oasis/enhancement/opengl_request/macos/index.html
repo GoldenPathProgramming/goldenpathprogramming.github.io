@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/scripts/head.js"></script>
+</head>
+
+<body>
+    <script src="/scripts/header.js"></script>
+
+    <h2>Specifying your OpenGL context version on MacOS</h2>
+
+    <h3 style="text-align:left;">References</h3>
+    <ul>
+        
+        <li><a href="https://wikis.khronos.org/opengl/OpenGL_Context" target="_blank">OpenGL Context official wiki page</a></li>
+        <li><a href="https://registry.khronos.org/OpenGL-Refpages/" target="_blank">OpenGL reference pages</a></li>
+        <li><a href="https://registry.khronos.org/OpenGL/index_gl.php" target="_blank">OpenGL specifications and references</a></li>
+        <li><a href="https://developer.apple.com/documentation/appkit/opengl-profiles?language=objc" target="_blank">OpenGL Profiles Apple Reference</a></li>
+        <li><a href="https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/ProgrammingWithObjectiveC/Introduction/Introduction.html" target="_blank">Objective-C Programming Guide</a></li>
+        <li><a href="https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/CocoaFundamentals/Introduction/Introduction.html" target="_blank">Cocoa Fundamentals</a></li>
+        <li><a href="https://developer.apple.com/documentation/appkit?language=objc" target="_blank">Obj-C/Cocoa API Reference</a></li>
+        <li><a href="https://developer.apple.com/documentation/appkit/opengl-pixel-format-attributes?language=objc" target="_blank">NSOpenGL Pixel Format Attributes</a></li>
+        <li><a href="https://developer.apple.com/documentation/appkit/opengl-profiles?language=objc" target="_blank">OpenGL Profiles</a></li>
+    </ul>
+
+    <p>OpenGL added features from 1.0 through 3.0. At that point, it was decided that the older fixed-function API should be deprecated. In 3.1, many features were removed, and from 3.2 onward two profiles differentiated these differences: core and compatibility. Core profile only has the new API, and compatibility still supports the deprecated API. On most platforms, you can request a context compatible with <b>any</b> version of OpenGL, and the driver will attempt to do so. In Apple's implementation, there are 3 distinct versions you can request: 2.1 (legacy), 3.2 core, and 4.1 core. The core profiles do not implement legacy features, so you must choose between either the old fixed-function pipeline in 2.1, or the core functionality in one of the two later versions. Note that 4.1 core is fully backward compatible with 3.2 core.</p>
+
+    <script src="/scripts/embed-code.js" data-src="src/main.m"></script>
+    <p>Build with:</p>
+    <code>clang main.c -framework Cocoa -framework OpenGL</code>
+
+    <hr/>
+
+    <code>    NSOpenGLPixelFormatAttribute glAttributes[] = {
+        NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersionLegacy,
+        // NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersion3_2Core,
+        // NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersion4_1Core,
+        0,
+    };</code>
+    <p>When specifying your OpenGL attributes, you can request a specific context version with NSOpenGLPFAOpenGLProfile. The three valid values are:
+        <ul>
+            <li>NSOpenGLProfileVersionLegacy - 2.1 with fixed function pipeline and no newer features.</li>
+            <li>NSOpenGLProfileVersion3_2Core - 3.2 with all deprecated functionality removed. When requesting this on modern Macs, you will probably get 4.1 core instead.</li>
+            <li>NSOpenGLProfileVersion4_1Core - 4.1 with all deprecated functionality removed (superset of 3.2 core).</li>
+        </ul>
+    </p>
+
+    <script src="/scripts/prev-next-step.js" path_next="/#oasis1" label_next="Back to the Path"></script>
+
+    <script src="/scripts/footer.js"></script>
+</body>
+
+</html>

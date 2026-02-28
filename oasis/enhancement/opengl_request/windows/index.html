@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/scripts/head.js"></script>
+</head>
+
+<body>
+    <script src="/scripts/header.js"></script>
+
+    <h2>Specifying your OpenGL context version on Windows</h2>
+
+    <h3 style="text-align:left;">References</h3>
+    <ul>
+        <li><a href="https://registry.khronos.org/OpenGL/extensions/ARB/WGL_ARB_create_context.txt" target="_blank">WGL_ARB_create_context specification</a></li>
+        <li><a href="https://registry.khronos.org/OpenGL-Refpages/gl2.1/xhtml/glXChooseFBConfig.xml" target="_blank">glXChooseFBConfig specification</a></li>
+        <li><a href="https://wikis.khronos.org/opengl/OpenGL_Context" target="_blank">OpenGL Context official wiki page</a></li>
+        <li><a href="https://registry.khronos.org/OpenGL-Refpages/" target="_blank">OpenGL reference pages</a></li>
+        <li><a href="https://registry.khronos.org/OpenGL/index_gl.php" target="_blank">OpenGL specifications and references</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/windows/win32/api/" target="_blank">Win32 Documentation</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-wglcreatelayercontext" target="_blank">wglCreateLayerContext function</a></li>
+    </ul>
+
+    <p>OpenGL added features from 1.0 through 3.0. At that point, it was decided that the older fixed-function API should be deprecated. In 3.1, many features were removed, and from 3.2 onward two profiles differentiated these differences: core and compatibility. Core profile only has the new API, and compatibility still supports the deprecated API. When you request a specific version, the graphics driver will give you a version compatible with the version you requested. These days that most often means a 4.6 compatibility or core profile context.</p>
+
+    <script src="/scripts/embed-code.js" data-src="src/main.c"></script>
+    <p>Build with:</p>
+    <code>gcc main.c -lopengl32 -lgdi32</code>
+    <hr/>
+
+    <code>    const auto gl_context_temp = wglCreateContext (window_context); assert (gl_context_temp);
+    { const auto result = wglMakeCurrent (window_context, gl_context_temp); assert (result); }</code>
+    <p>You may be surprised to see that we're creating a context without specifying the version! In order to use the GL function required to create a specific context version, we need to already have a valid OpenGL context, so we create one the non-specific way initially.</p>
+
+    <code>typedef HGLRC (*wglCreateContextAttribsARB_t) (HDC hDC, HGLRC hshareContext, const int *attribList); wglCreateContextAttribsARB_t wglCreateContextAttribsARB;
+
+    wglCreateContextAttribsARB = (wglCreateContextAttribsARB_t)wglGetProcAddress ((LPCSTR)"wglCreateContextAttribsARB"); assert (wglCreateContextAttribsARB);</code>
+    <p>We can't link to wglCreateContextAttribsARB in the normal way, since it may or may not be present depending on the GPU driver. Instead, we have to retrieve a pointer to the function with glXGetProcAddress. When retrieving OpenGL functions, I like to create a typedef of the function pointer type.</p>
+
+    <code>    const int context_attributes[] = {
+        WGL_CONTEXT_MAJOR_VERSION_ARB, 3,
+        WGL_CONTEXT_MINOR_VERSION_ARB, 2,
+        WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
+        0
+    };
+
+    const auto gl_context = wglCreateContextAttribsARB (window_context, 0, context_attributes);
+    assert (gl_context);</code>
+    <p>Context attributes are created as a NULL-terminated array of ints. Here I've set the major.minor version to 3.2 and specified the core profile. All available attributes are below.</p>
+
+    <code>WGL_CONTEXT_MAJOR_VERSION_ARB
+WGL_CONTEXT_MINOR_VERSION_ARB</code>
+    <p>These together must specify a valid OpenGL version, all of which are: 1.0-1.5, 2.0-2.1, 3.0-3.3, 4.0-4.6.</p>
+
+    <code>WGL_CONTEXT_PROFILE_MASK_ARB</code>
+    <ul>
+        <li>WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB: Compatibility profile.</li>
+        <li>WGL_CONTEXT_CORE_PROFILE_BIT_ARB: Core profile. Only valid when the requested version is 3.2 or above.</li>
+    </ul>
+
+    <code>WGL_CONTEXT_FLAGS_ARB</code>
+    <ul>
+        <li>WGL_CONTEXT_DEBUG_BIT_ARB: Create a debug context. Provide additional runtime checking, validation, and logging.</li>
+        <li>WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB: Do not support deprecated functionality. Only valid when requested version is 3.0 or above.</li>
+    </ul>
+
+    <code>WGL_CONTEXT_LAYER_PLANE_ARB</code>
+    <p>The layer plane that the rendering context is bound to. The same as the second parameter of wglCreateLayerContext().</p>
+
+    <script src="/scripts/prev-next-step.js" path_next="/#oasis1" label_next="Back to the Path"></script>
+
+    <script src="/scripts/footer.js"></script>
+</body>
+
+</html>

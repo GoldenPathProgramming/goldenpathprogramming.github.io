@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/scripts/head.js"></script>
+</head>
+
+<body>
+    <script src="/scripts/header.js"></script>
+
+    <h2>Installing GCC, CMake, GDB, and Git on Windows</h2>
+
+    <ul>
+        <li><a href="#winget">Option 1: WinGet. Easy but may fail.</a></li>
+        <li><a href="#manual">Option 2: Manual. More effort, always works.)</a></li>
+    </ul>
+
+    <p>Special thanks to Brecht Sanders, creator of WinLibs which enables us to install almost everything in one easy package. Cheers Brecht!</p>
+
+    <h3 id="winget">WinGet</h3>
+    <p>Open a terminal window (powershell or cmd). Enter the following command:</p>
+    <code>winget install BrechtSanders.WinLibs.POSIX.UCRT Git.Git</code>
+    <p>If the above works, great! Now <a href="#verify">verify with the commands at the bottom of the page.</a> If it didn't work, you can install things manually...</p>
+
+    <h3 id="manual">Manual Installation</h3>
+    <ol>
+        <li>Visit this URL: <a href"https://winlibs.com/#download-release" target="_blank">WinLibs.com/#download-release</a></li>
+        <li>Download the latest Win64 release - it should have POSIX threads, UCRT.
+        <br/><img src="assets/download.webp" style="margin-top:.3em;" /><br/></li>
+        <li>Open the downloaded file. It should contain a single folder, called "mingw64". Extract that folder to a place of your choosing - I recommend the root of your main drive (C: in most cases).</li>
+        <li>Test that the downloaded GCC works by opening a terminal window (powershell or cmd) and type the following command (change the directory if you used something different):
+            <code>C:/mingw64/bin/gcc.exe --version</code>
+            You should see something like the following:
+            <code>gcc.exe (MinGW-W64 x86_64-ucrt-posix-seh, built by Brecht Sanders, r5) 15.2.0
+Copyright (C) 2025 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.</code>
+        </li>
+        <li>In the Windows search bar, type "env" and select "Edit the system environment variables."</li>
+        <li>Click "Environment Variables."
+            <br/><img src="assets/environment variables.webp" style="margin-top:.3em;" />
+        </li>
+        <li>Select "Path" and click the "Edit..." button.<br/>
+            <img src="assets/edit path.webp" style="margin-top:.3em;" />
+        </li>
+        <li>Click "New" and copy-paste the full directory containing gcc.exe - if you copied the mingw64 folder to the root of your C: drive, this will be "C:/mingw64/bin"</li>
+        <li>Click OK on each window to close them.</li>
+        <li>Close any open terminal windows and open a new one. Type:
+            <code>gcc --version</code>
+        </li
+    </ol>
+    <p>If you got the same output as before when you typed the full directory, then MinGW is installed correctly. Lastly, we need Git.</p>
+    <ol>
+        <li>Visit the <a href="https://gitforwindows.org/" target="_blank">GitForWindows.org</a> website and download the installer.</li>
+        <li>Run the installer and follow the prompts.</li>
+        <li>When complete, open a terminal and type the following command:
+            <code>git --version</code>
+        </li>
+    </ol>
+
+    <h3 id="verify">Verify the Installation</h3>
+    <p>Check your installation with the following commands (press enter after each one and check the output):</p>
+    <code>gcc --version
+cmake --version
+gdb --version
+git --version</code>
+
+    <script src="/scripts/prev-next-step.js" path_prev="/#way0" label_prev="Back to the Path" path_next="../../sanity/windows/"></script>
+
+    <script src="/scripts/footer.js"></script>
+</body>
+
+</html>

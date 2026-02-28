@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/scripts/head.js"></script>
+</head>
+
+<body>
+    <script src="/scripts/header.js"></script>
+
+    <h2>Specifying your OpenGL context version on Linux</h2>
+
+    <h3 style="text-align:left;">References</h3>
+    <ul>
+        <li><a href="https://registry.khronos.org/OpenGL/extensions/ARB/GLX_ARB_create_context.txt" target="_blank">GLX_ARB_create_context specification</a></li>
+        <li><a href="https://registry.khronos.org/OpenGL-Refpages/gl2.1/xhtml/glXChooseFBConfig.xml" target="_blank">glXChooseFBConfig specification</a></li>
+        <li><a href="https://wikis.khronos.org/opengl/OpenGL_Context" target="_blank">OpenGL Context official wiki page</a></li>
+        <li><a href="https://registry.khronos.org/OpenGL-Refpages/" target="_blank">OpenGL reference pages</a></li>
+        <li><a href="https://registry.khronos.org/OpenGL/index_gl.php" target="_blank">OpenGL specifications and references</a></li>
+    </ul>
+
+    <p>OpenGL added features from 1.0 through 3.0. At that point, it was decided that the older fixed-function API should be deprecated. In 3.1, many features were removed, and from 3.2 onward two profiles differentiated these differences: core and compatibility. Core profile only has the new API, and compatibility still supports the deprecated API. When you request a specific version, the graphics driver will give you a version compatible with the version you requested. These days that most often means a 4.6 compatibility or core profile context.</p>
+
+    <script src="/scripts/embed-code.js" data-src="src/main.c"></script>
+    <p>Build with:</p>
+    <code>gcc main.c -lX11 -lGL</code>
+    <hr/>
+
+    <code>    const int fb_attributes[] = {
+        GLX_X_RENDERABLE, True,
+        GLX_DOUBLEBUFFER, True,
+        GLX_RED_SIZE, 8, GLX_GREEN_SIZE, 8, GLX_BLUE_SIZE, 8, GLX_DEPTH_SIZE, 24,
+        None
+    };
+
+    int fb_count;
+    GLXFBConfig* fb_configs = glXChooseFBConfig(display, screen, fb_attributes, &fb_count); assert(fb_configs && fb_count > 0);
+    GLXFBConfig fb_config = fb_configs[0];
+    XFree (fb_configs);
+
+    XVisualInfo* visual = glXGetVisualFromFBConfig(display, fb_config); assert(visual);</code>
+    <p>gl_attributes and glXChooseVisual have been replaced with fb_attributes, glXChooseFBConfig and glXGetVisualFromFBConfig. These are needed to get a frame buffer configuration for use later when specifying the OpenGL context version. For a list of fb_attributes options, see the glXChooseFBConfig specification.</p>
+
+    <code>    auto gl_context_temp = glXCreateContext (display, visual, 0, true); assert (gl_context_temp);</code>
+    <p>You may be surprised to see that we're creating a context without specifying the version! In order to use the GL functions required to create a specific context version, we need to already have a valid OpenGL context, so we create one the non-specific way initially.</p>
+
+    <code>typedef GLXContext (*glXCreateContextAttribsARB_t) (Display *dpy, GLXFBConfig config, GLXContext share_context, Bool direct, const int *attrib_list); glXCreateContextAttribsARB_t glXCreateContextAttribsARB;
+
+    glXCreateContextAttribsARB = (glXCreateContextAttribsARB_t)glXGetProcAddress ((const GLubyte*)"glXCreateContextAttribsARB"); assert (glXCreateContextAttribsARB);</code>
+    <p>We can't link to glXCreateContextAttribsARB in the normal way, since it may or may not be present depending on the GPU driver. Instead, we have to retrieve a pointer to the function with glXGetProcAddress. When retrieving OpenGL functions, I like to create a typedef of the function pointer type.</p>
+
+    <code>    const int context_attributes[] = {
+        GLX_RENDER_TYPE, GLX_RGBA_TYPE,
+        GLX_CONTEXT_MAJOR_VERSION_ARB, 3,
+        GLX_CONTEXT_MINOR_VERSION_ARB, 2,
+        GLX_CONTEXT_PROFILE_MASK_ARB, GLX_CONTEXT_CORE_PROFILE_BIT_ARB,
+        None
+    };
+
+    const auto gl_context = glXCreateContextAttribsARB (display, fb_config, 0, True, context_attributes); assert(gl_context);</code>
+    <p>Context attributes are created as a NULL-terminated array of ints. Here I've set the major.minor version to 3.2 and specified the core profile. All available attributes are below.</p>
+
+    <code>GLX_CONTEXT_MAJOR_VERSION_ARB
+GLX_CONTEXT_MINOR_VERSION_ARB</code>
+    <p>These together must specify a valid OpenGL version, all of which are: 1.0-1.5, 2.0-2.1, 3.0-3.3, 4.0-4.6.</p>
+
+    <code>GLX_CONTEXT_PROFILE_MASK_ARB</code>
+    <ul>
+        <li>GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB: Compatibility profile.</li>
+        <li>GLX_CONTEXT_CORE_PROFILE_BIT_ARB: Core profile. Only valid when the requested version is 3.2 or above.</li>
+    </ul>
+
+    <code>GLX_CONTEXT_FLAGS_ARB</code>
+    <ul>
+        <li>GLX_CONTEXT_DEBUG_BIT_ARB: Create a debug context. Provide additional runtime checking, validation, and logging.</li>
+        <li>GLX_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB: Do not support deprecated functionality. Only valid when requested version is 3.0 or above.</li>
+    </ul>
+
+    <code>GLX_RENDER_TYPE</code>
+    <ul>
+        <li>GLX_RGBA_TYPE</li>
+        <li>GLX_COLOR_INDEX_TYPE. Not valid for version 3.0 or later.</li>
+    </ul>
+    <p>Note that according to the specification, GLX_RENDER_TYPE <b>must</b> be set to a valid value. In my experience, it seems to default to RGBA, but this is not guaranteed behaviour, so it should always be specified.</p>
+
+    <script src="/scripts/prev-next-step.js" path_next="/#oasis1" label_next="Back to the Path"></script>
+
+    <script src="/scripts/footer.js"></script>
+</body>
+
+</html>

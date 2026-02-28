@@ -1,0 +1,6 @@
+a.out
+a.exe
+.vscode
+*.DS_Store
+*info.plist
+*a.out.yml

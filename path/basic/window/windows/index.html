@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/scripts/head.js"></script>
+</head>
+
+<body>
+    <script src="/scripts/header.js"></script>
+
+    <h2>Opening a Window with Win32 on Windows</h2>
+
+    <h3 style="text-align:left;">References</h3>
+    <ul>
+        <li><a href="https://learn.microsoft.com/en-us/windows/win32/api/" target="_blank">Win32 Documentation</a></li>
+        <li><a href="https://gcc.gnu.org/onlinedocs/gcc/Cygwin-and-MinGW-Options.html" target="_blank">MinGW Compilation Options (-mwindows, -mconsole)</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/windows/win32/winmsg/window-class-reference" target="_blank">Window Class Reference</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-createwindoww" target="_blank">CreateWindow Reference</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/windows/win32/winmsg/window-styles" target="_blank">Window Styles</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/windows/win32/winmsg/window-features" target="_blank">Window Features</a></li>
+    </ul>
+
+    <image src="assets/window.webp"/>
+
+    <p>Win32 is the native Windows API. There have been many additions over the years, and multiple other APIs built on-top or alongside, but good ol' Win32 is still well-supported on Windows 11, with no end in sight.</p>
+
+    <p>The below code is the Win32-equivalent of, "Hello, World!"</p>
+
+    <script src="/scripts/embed-code.js" data-src="src/main.c"></script>
+
+    <p>Copy the above code into a file and name it main.c. Then open a terminal in the same directory and run the following command:</p>
+    <code>gcc main.c</code>
+    <p>You shouldn't see any output in your terminal, but in the folder an a.exe file should have been created. This is your executable binary file. Run it with ./a.exe (or double-click it). You should see a blank window pop up, then close after 5 seconds.</p>
+    <hr/>
+
+    <code><text>#define UNICODE
+#define _UNICODE
+#include &lt;windows.h>
+#include &lt;assert.h>
+#include &lt;stdio.h></text></code>
+    <p>windows.h defines most of what we need. Win32 has gone through many changes over the years, and it was initially designed without unicode. While UTF-8 is clearly the best character encoding, and most widely used today, Microsoft decided to implement UTF-16 instead. You'll find various Win32 functions with a trailing A or W, for ANSI or Wide (UTF-16). I recommend you always target the unicode API, which can be ensured by defining the two UNICODE macros above. I've chosen to include assertions as a way to help you catch bugs as you follow the Path, so you'll see them often.</p>
+
+    <code>int main() {</code>
+    <p>If you're familiar with Windows programming, you may have been expecting to see WinMain. Whether you need WinMain or main comes down to how your program is linked. I prefer to always use main() - you can still make both console and GUI applications this way as long as you get your linker flags right. If you want a console window for stdout output and such, you can either compile without any extra flags, or use -mconsole. For a Windows GUI application with no console window, use -mwindows.</p>
+
+    <code>    const wchar_t window_class_name[] = L"Window Class";
+    const WNDCLASS window_class = {
+        .lpfnWndProc = DefWindowProc,
+        .lpszClassName = window_class_name,
+        .style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC,
+        .hCursor = LoadCursor (NULL, IDC_ARROW),
+    };
+    { const auto result = RegisterClass (&window_class); assert (result); }</code>
+    <p>Before we create a window, we must define a window class with some information about the window(s) to be created. You're already seeing some of Microsoft's insane variable prefixes here <a href="https://en.wikipedia.org/wiki/Hungarian_notation" target="_blank">Systems Hungarian notation)</a>. Since we're using the unicode API, strings must be wide char arrays (wchar_t). Wide char literals are made with an L before the first double-quotation mark. lpfnWndProc is the function that will be called to process all window messages (events), which include user input, resizing, etc. Windows has a default one called DefWindowProc, which we assign for now. CS_HREDRAW | CS_VREDRAW means the window should be redrawn on any resize. Setting the cursor to the standard arrow fixes the problem where your cursor gets stuck looking like the loading circle whenever it's over your window.</p>
+
+    <code>    const auto window_handle = CreateWindow (window_class_name, L"Golden Path", WS_OVERLAPPEDWINDOW | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, NULL, NULL); assert (window_handle);</code>
+    <p>CreateWindow takes many arguments - check the reference for all of them. Note the wide character string literal for the title. The window styles here just make a normal application window. You can change the third and fourth CW_USEDEFAULTs to a width and height number to create a window with a set size.</p>
+
+    <code>    MSG message;
+    while (PeekMessage (&message, NULL, 0, 0, PM_REMOVE)) DispatchMessage (&message);</code>
+    <p>This is the most basic type of message handling loop for a window. PeekMessage checks if there are any messages in the queue, and PM_REMOVE means that if there is one, it'll be removed. DispatchMessage calls the WndProc we set in the window class earlier with the message. I chose PeekMessage here instead of GetMessage so that, once we process the initial messages and haven't received any new ones yet, the loop will exit and proceed onto the 5 second sleep and close.</p>
+
+    <code>gcc main.c</code>
+    <p>The code is built with a simple gcc call.</p>
+
+    <script src="/scripts/prev-next-step.js" path_prev="/#path1" label_prev="Home" path_next="../../event_loop/windows/"></script>
+
+    <script src="/scripts/footer.js"></script>
+</body>
+
+</html>

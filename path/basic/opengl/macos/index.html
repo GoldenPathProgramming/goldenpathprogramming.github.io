@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/scripts/head.js"></script>
+</head>
+
+<body>
+    <script src="/scripts/header.js"></script>
+
+    <h2>Initializing OpenGL with Cocoa on MacOS</h2>
+
+    <h3 style="text-align:left;">References</h3>
+    <ul>
+        <li><a href="https://registry.khronos.org/OpenGL-Refpages/gl2.1/" target="_blank">OpenGL 2.1, GLX, GLU reference pages</a></li>
+        <li><a href="https://registry.khronos.org/OpenGL/index_gl.php" target="_blank">OpenGL specifications and references</a></li>
+        <li><a href="https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/ProgrammingWithObjectiveC/Introduction/Introduction.html" target="_blank">Objective-C Programming Guide</a></li>
+        <li><a href="https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/CocoaFundamentals/Introduction/Introduction.html" target="_blank">Cocoa Fundamentals</a></li>
+        <li><a href="https://developer.apple.com/documentation/appkit?language=objc" target="_blank">Obj-C/Cocoa API Reference</a></li>
+        <li><a href="https://developer.apple.com/documentation/appkit/opengl-pixel-format-attributes?language=objc" target="_blank">NSOpenGL Pixel Format Attributes</a></li>
+        <li><a href="https://developer.apple.com/documentation/appkit/opengl-profiles?language=objc" target="_blank">OpenGL Profiles</a></li>
+    </ul>
+
+    <image src="assets/screenshot.webp"/>
+
+    <p>While it's possible to draw pixels to a Cocoa window with built-in APIs, they are not well-suited to games. If you're curious, feel free to look it up, but I'm going to skip straight to creating an OpenGL context in the window. OpenGL is a very featureful API for programming graphics processors, but we'll be using it sparingly. For now, we'll just draw the classic, "Hello Triangle." OpenGL has been deprecated on MacOS since 2018, but Apple have implemented the API on top of Metal, and it's actually very well supported and fairly easy to use. If that changes in future, I'll finally look into Metal (or Vulkan in Metal), but as long as I can use the same API as I do on other platforms, I'm a happy chappy.</p>
+
+    <script src="/scripts/embed-code.js" data-src="src/main.m"></script>
+    <p>Build with:</p>
+    <code>clang main.m -framework Cocoa -framework OpenGL</code>
+
+    <hr/>
+
+    <code>#define GL_SILENCE_DEPRECATION
+#import &lt;Cocoa/Cocoa.h>
+#include &lt;OpenGL/glu.h></code>
+    <p>Without that definition, you'll get loads of deprecation warnings when using OpenGL on Mac. On other platforms I'm more judicious about #includes, but since Apple ships their own OpenGL headers, I just go straight for glu.h which also includes gl.h.</p>
+
+    <code>    NSOpenGLPixelFormatAttribute glAttributes[] = {
+        NSOpenGLPFAColorSize, 24,
+        NSOpenGLPFAAlphaSize, 8,
+        NSOpenGLPFAClosestPolicy,
+        NSOpenGLPFADoubleBuffer,
+        NSOpenGLPFAAccelerated,
+        NSOpenGLPFANoRecovery,
+        NSOpenGLPFADepthSize, 24,
+        NSOpenGLPFAStencilSize, 8,
+        NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersionLegacy,
+        0,
+    };
+    NSOpenGLPixelFormat *pixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:glAttributes];
+    gl_context = [[NSOpenGLContext alloc] initWithFormat:pixelFormat shareContext:nil];</code>
+    <p>OpenGL requires a "context," which is your link into OpenGL, holding all your rendering information and associated with every OpenGL command you run. [NSOpenGLContext init...] takes a NULL-terminated list of attributes, some of which are single values to toggle on and off, and others which are an identifier followed by a value. Check the NSOpenGLPixelFormatAttribute documentation for all possible values. Since OpenGL is implemented by Apple on top of Metal, they can guarantee the availability of the versions they've implemented. These are 2.1 legacy (NSOpenGLProfileVersionLegacy), 3.2 core (NSOpenGLProfileVersion3_2Core), and 4.1 core (NSOpenGLProfileVersion4_1Core). Since the last two are "core" profiles, they remove all legacy features, so if you want the old-school fixed-function pipeline, you must create a 2.1 legacy context.</p>
+
+    <code>    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    [gl_context setView:[window contentView]];
+    #pragma clang diagnostic pop</code>
+    <p>The OpenGL context needs to be assigned to a drawable. Here it is assigned to the window's content view. This method is deprecated since MacOS 10.14 and Apple recommends sub-classing NSOpenGLView instead. Unless this method stops working altogether, I'm going to keep using it, because I don't like NSOpenGLView. I used these pragmas to get rid of the annoying warnings.</p>
+
+    <code>    [gl_context makeCurrentContext];</code>
+    <p>After creating a context, but before using it, you must call this function. This sets it as the currently active context for this thread.</p>
+
+    <code>    printf ("GL context version: %s\n", glGetString (GL_VERSION));</code>
+    <p>Check what version your profile prints as. You should expect something like, "2.1 Metal".</p>
+
+    <code>#define WINDOW_CONTENT_SIZE [[window contentView] convertRectToBacking:[[window contentView] bounds]].size
+
+static void OnResize () {
+    const NSSize size = WINDOW_CONTENT_SIZE;
+    glViewport (0, 0, size.width, size.height);
+    glMatrixMode (GL_PROJECTION);
+    glLoadIdentity ();
+    [gl_context update];
+}</code>
+    <p>I've created this function to reset some properties whenever the window is resized. When you first call setView, the viewport is set to the area of the window, but it doesn't automatically update after that. It's a bit empty for now, but here's where you'll usually set up your projection matrix, which tells OpenGL how to mathematically translate from rendering coordinates to screen coordinates.</p>
+
+    <code>    glClearColor (0, 0, 0, 0);</code>
+    <p>You can tell OGL what value to use for clearing - try changing these values.</p>
+
+    <code>        glClear (GL_COLOR_BUFFER_BIT);
+
+        glBegin (GL_TRIANGLES);
+            glColor3f (1, 0, 0);
+            glVertex3f (-1, -1, 0);
+            glColor3f (0, 1, 0);
+            glVertex3f (1, -1, 0);
+            glColor3f (0, 0, 1);
+            glVertex3f (0, 1, 0);
+        glEnd ();
+
+        [gl_context flushBuffer];</code>
+    <p>This is a simple rendering pass. The drawing surface is cleared (based on the clear color set before), and we pass in some color and vertex information to draw a triangle. The identity projection matrix maps the viewport to horizontal and vertical axes of -1 to 1, so this triangle stretches to the corners and top-middle of the window. You'll see that OpenGL blends colors between the vertices.</p>
+    <p>When creating the context, we specified, "NSOpenGLPFADoubleBuffer," which means we want 2 rendering buffers. One is displayed while the other is drawn into, then, when drawing is complete, we swap the buffers wholesale. This prevents the user seeing the individual drawing operations and only shows them complete frames. flushBuffer is the function used to swap the buffers.</p>
+
+    <p>If you'd like to learn more about legacy OpenGL, I recommend the book, "OpenGL Superbible 4th Edition," which covers version 2.1 quite well.</p>
+
+    <script src="/scripts/prev-next-step.js" path_prev="../../event_loop/macos/" path_next="../../audio/macos/"></script>
+
+    <script src="/scripts/footer.js"></script>
+</body>
+
+</html>

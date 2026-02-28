@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/scripts/head.js"></script>
+</head>
+
+<body>
+    <script src="/scripts/header.js"></script>
+
+    <h2>Event Loop with Xlib on Linux</h2>
+
+    <h3 style="text-align:left;">References</h3>
+    <ul>
+        <li><a href="https://www.x.org/releases/current/doc/libX11/libX11/libX11.html" target="_blank">Xlib documentation</a></li>
+    </ul>
+
+    <p>This time we'll use the slightly less "Simple" function to create a window and run an event processing loop.</p>
+
+    <script src="/scripts/embed-code.js" data-src="src/main.c"></script>
+    <p>Build with:</p>
+    <code>gcc main.c -lX11</code>
+    <hr/>
+
+    <p>The above code opens a window with more specificity, then processes events, printing information about those events to the console until it receives one of two "quit" events.</p>
+
+    <code>    XVisualInfo visual = {};
+    { const auto result = XMatchVisualInfo (display, screen, 24, TrueColor, &visual); assert (result); }</code>
+    <p>In order to draw graphics to an X window, X11 needs some "visual" information. Here we just ask for a 24-bit RGB visual. We won't actually be doing any pixel drawing with Xlib directly, but if you were, these days, that's what you'd use. Other visual types include grayscale, colour-mapping, etc., but they aren't usually used anymore.</p>
+
+    <code>    XSetWindowAttributes attributes = {
+        .background_pixel = 0x403a4d,
+        .colormap = XCreateColormap (display, root_window, visual.visual, AllocNone),
+        .event_mask = StructureNotifyMask | KeyPressMask | KeyReleaseMask | FocusChangeMask | PointerMotionMask | ButtonPressMask | ButtonReleaseMask,
+    };</code>
+    <p>The background color from before has moved into this structure. We create a colour map, which is mostly apocryphal since these days every display uses an RGB representation rather than colour indices. The event mask tells Xlib what kinds of events we want to be sent - see the documentation for all the possibilities.</p>
+
+    <code>    const auto window = XCreateWindow(display, root_window, 0, 0, 640, 480, 0, visual.depth, 0, visual.visual, CWBackPixel | CWColormap | CWEventMask, &attributes);</code>
+    <p>XCreateWindow is the slightly more complex version of what we used last time. This allows us to specify more information, as above. We then map the window just like before, and flush all X commands.</p>
+
+    <code>    Atom WM_DELETE_WINDOW = XInternAtom (display, "WM_DELETE_WINDOW", False);
+    if (WM_DELETE_WINDOW != None)
+        { const auto result = XSetWMProtocols (display, window, &WM_DELETE_WINDOW, 1); assert (result); }</code>
+    <p>The X11 server has a bunch of predefined properties, but some properties are not part of that core specification. These extended properties are created as "Atoms," and queried with strings. WM_DELETE_WINDOW is the atom used to represent the event the Window Manager sends to us when our window is destroyed (say, by the user pressing ALT+F4). Every modern system will have this atom, but I decided to let the code work whether the atom is found or not, since it's not really a problem if it doesn't exist.</p>
+
+    <code>    bool quit = false;
+    while (!quit) {
+        XEvent e;
+        XNextEvent (display, &e);
+        switch (e.type) {</code>
+    <p>This is the event loop. XNextEvent blocks until the next event is received, and puts the result in the variable passed to it. If you want to check whether there are any events available without blocking, use XPending. The XEvent structure is a tagged union, so we switch on the type and recast it to the union member based on that type. For this example code, I've handled all the events you're likely to need in a game. I print the event to the console and have demonstrated a few ways of handling the events. Most of them are self-explanatory, but I'll explain a few important ones. For more information about these and other events, check the Xlib documentation.</p>
+
+    <code>            case KeyPress: {
+                const auto k = (XKeyPressedEvent*)&e;
+                char c;
+                KeySym sym;
+                XLookupString (k, &c, 1, &sym, NULL);
+                if (c >= 33 && c <= 126)
+                    printf ("KeyPress [%c]\n", c);
+                else {
+                    const char *symstr = "Unknown";
+                    switch (sym) {
+                        case XK_Return: symstr = "Enter"; break;
+                        case XK_space: symstr = "Space"; break;
+                        case XK_Escape: symstr = "Escape"; break;
+                        case XK_Left: symstr = "Left"; break;
+                        case XK_Right: symstr = "Right"; break;
+                        case XK_Up: symstr = "Up"; break;
+                        case XK_Down: symstr = "Down"; break;
+                    }
+                    printf ("KeyPress symbol [%s]\n", symstr);
+                }
+            } break;</code>
+    <p>The keypress event needs some reinterpretation before it's usable. XLookupString applies modifiers (like shift, alt, ctrl, etc.) and gives you a printable character (or string, if you provide a bigger buffer) based on the key press. I check if it's in the printable ASCII range before printing it, since printing certain control characters can mess up the terminal output. It also returns a key symbol, which, if you're not printing the event to the console, is likely more useful. Check &lt;X11/keysymdef.h> for more key codes. Since this function takes into account the status of other keys, if you are holding shift, for example, and press the '1' key, this function gives you '!' as the character and key symbol. Good for typing, but not so good for games, I find.</p>
+
+    <code>            case KeyRelease: {
+                const auto k = (XKeyPressedEvent*)&e;
+                const auto sym = XLookupKeysym (k, 0);
+                if (sym >= 33 && sym <= 126)
+                    printf ("KeyRelease [%c]\n", (char)sym);
+                else
+                    puts ("KeyRelease symbol");
+            } break;</code>
+    <p>Here I demonstrate the other way of handling key events - XLookupKeysym. This only returns the key symbol, and doesn't take into account the state of other keys (shift, alt, ctrl, etc.). This is the more suitable way to check key presses for games. Again, check &lt;X11/keysymdef.h> for all the key symbols you want to check for. Many of the typable characters' key symbols are their corresponding ASCII values, which is demonstrated with the if statement and printf call.</p>
+
+    <code>            case ConfigureNotify: {
+                const auto c = (XConfigureEvent*)&e;
+                printf ("ConfigureNotify: x[%d] y[%d] w[%d] h[%d]\n", c->x, c->y, c->width, c->height);
+            } break;</code>
+    <p>ConfigureNotify is the event passed whenever any of several window properties are changed. It doesn't tell you specifically which one is changed, so if you want to respond to resizing and such you can store the previous size and check if it's changed here.</p>
+
+    <code>            case MotionNotify: {
+                const auto m = (XMotionEvent*)&e;
+                printf ("MotionNotify: x[%d] y[%d]\n", m->x, m->y);
+            } break;</code>
+    <p>This event is sent for mouse movement.</p>
+
+    <script src="/scripts/prev-next-step.js" path_prev="../../window/linux/" path_next="../../opengl/linux/"></script>
+
+    <script src="/scripts/footer.js"></script>
+</body>
+
+</html>

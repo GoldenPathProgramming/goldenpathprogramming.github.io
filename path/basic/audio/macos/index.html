@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/scripts/head.js"></script>
+</head>
+
+<body>
+    <script src="/scripts/header.js"></script>
+
+    <h2>Sound with CoreAudio on MacOS</h2>
+
+    <h3 style="text-align:left;">References</h3>
+    <ul>
+        <li><a href="https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/ProgrammingWithObjectiveC/Introduction/Introduction.html" target="_blank">Objective-C Programming Guide</a></li>
+        <li><a href="https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/CocoaFundamentals/Introduction/Introduction.html" target="_blank">Cocoa Fundamentals</a></li>
+        <li><a href="https://developer.apple.com/documentation/appkit?language=objc" target="_blank">Obj-C/Cocoa API Reference</a></li>
+        <li><a href="https://developer.apple.com/documentation/audiotoolbox?language=objc" target="_blank">Audio Toolbox Reference</a></li>
+    </ul>
+
+    <p>We'll initialize a simple, low-latency audio output device which will call our provided function to request blocks of bytes representing any sound. It also automatically handles device switching when the default device changes, and recovers from general errors. Running the code below gives a console program which outputs a square wave sound. Press up/down on your keyboard to adjust the frequency, and escape/q/k to quit the program.</p>
+    <p>Note: Due to the use of defer, you need at least clang-22 to compile this code.</p>
+
+    <script src="/scripts/embed-code.js" data-src="src/main.m"></script>
+    <p>Build with:</p>
+    <code>clang main.m -fdefer-ts -framework AudioUnit -framework CoreAudio</code>
+    <hr/>
+
+    <code>    bool restart_multiple_attempts = false;
+    while (restart_audio && !quit) {
+        if (restart_multiple_attempts > 0) sleep (1);
+        restart_multiple_attempts = true;</code>
+    <p>I've wrapped the audio startup code in this loop so that it can easily be reinitialized upon any failure. If the first attempt at reinitialization fails, we sleep for 1 second before trying again. This prevents the program from saturating a CPU core trying to restart when the system doesn't have a valid audio output for us.</p>
+
+    <code>        AudioComponent output;
+        { output = AudioComponentFindNext(NULL,
+            &(AudioComponentDescription){
+                .componentType = kAudioUnitType_Output,
+                .componentSubType = kAudioUnitSubType_DefaultOutput,
+        }); assert (output); if (!output) { LOG("Can't find default output"); continue; } }
+
+        AudioUnit tone_unit;
+        DO_OR_RETRY (AudioComponentInstanceNew(output, &tone_unit), "Error creating audio unit");
+        defer { DO_OR_LOG (AudioComponentInstanceDispose(tone_unit), "Error disposing audio unit"); }</code>
+    <p>First, we must find an audio component to use. We're simply requesting the default output. It's important to dispose of the unit when finished with it (defer is convenient for this) since we may rerun this code many times if the audio device gets invalidated.</p>
+
+    <code>        DO_OR_RETRY (AudioUnitSetProperty(tone_unit, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input, 0, &(AURenderCallbackStruct){.inputProc = SoundCallback}, sizeof(AURenderCallbackStruct)), "Error setting render callback");</code>
+    <p>In order to send signals to the Audio output unit, we need to register a callback function which MacOS will call into.</p>
+
+    <code>        AudioStreamBasicDescription asbd = {
+            .mFormatID = kAudioFormatLinearPCM,
+            .mFormatFlags = kAudioFormatFlagIsSignedInteger | kAudioFormatFlagIsPacked | kAudioFormatFlagIsNonInterleaved,
+            .mSampleRate = SAMPLING_RATE,
+            .mBitsPerChannel = 16,
+            .mChannelsPerFrame = 1,
+            .mFramesPerPacket = 1,
+            .mBytesPerFrame = 2,
+            .mBytesPerPacket = 2,
+        };
+        DO_OR_RETRY (AudioUnitSetProperty(tone_unit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 0, &asbd, sizeof(asbd)), "Error setting stream format");</code>
+    <p>Here we set the properties of the audio stream we want to output. I've gone with 48KHz 16-bit signed integer single-channel.</p>
+
+    <code>        DO_OR_LOG (AudioUnitSetProperty(tone_unit, kAudioDevicePropertyBufferFrameSize, kAudioUnitScope_Input, 0, &(UInt32){PERIOD_SIZE}, sizeof(UInt32)), "Error setting buffer size");</code>
+    <p>The buffer size has a direct effect on the latency of our audio playback. Larger buffers mean more delay, but smaller buffers require tighter timing to prevent buffer underrun. I've requested a 5ms buffer size.</p>
+
+    <code>        AudioObjectPropertyAddress property_address = {
+            .mSelector = kAudioHardwarePropertyDefaultOutputDevice,
+            .mScope = kAudioObjectPropertyScopeGlobal,
+            .mElement = kAudioObjectPropertyElementMain
+        };
+        DO_OR_LOG (AudioObjectAddPropertyListener (kAudioObjectSystemObject, &property_address, deviceChangedCallback, NULL), "Failed to add property listener for default device change");
+        defer { DO_OR_LOG (AudioObjectRemovePropertyListener (kAudioObjectSystemObject, &property_address, deviceChangedCallback, NULL), "Failed to remove property listener for default device change"); }</code>
+    <p>We can set a callback function for various properties. We only need to monitor the default device in order to reinitialize whenever it changes. If you remove this default device-detecting code, you may find that MacOS automatically reroutes our audio to the new default device. However, the audio unit will not keep our previously set properties, particularly buffer size, so it's best to detect the change and reinitialize it ourselves.</p>
+
+    <code>        DO_OR_RETRY (AudioUnitInitialize(tone_unit), "Error initializing unit");
+        defer { DO_OR_LOG (AudioUnitUninitialize(tone_unit), "Error uninitializing unit"); }
+
+        DO_OR_RETRY (AudioOutputUnitStart(tone_unit), "Error starting unit");
+        defer { DO_OR_LOG (AudioOutputUnitStop(tone_unit), "Error stopping unit"); }</code>
+    <p>Finally, we initialize and start the audio output unit.</p>
+
+    <code>static OSStatus SoundCallback (void *inRefCon, AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp, UInt32 inBusNumber, UInt32 inNumberFrames, AudioBufferList *ioData) {
+    assert (ioData->mNumberBuffers == 1);
+    SInt16 *data = (SInt16*)ioData->mBuffers[0].mData;
+    for (UInt32 frame = 0; frame < inNumberFrames; ++frame) {
+        static uint16_t sound_counter = 0;
+        *(data++) = sound_counter < wavelength/2 ? INT16_MIN : INT16_MAX;
+        if (++sound_counter >= wavelength) sound_counter = 0;
+    }
+    return noErr;
+}</code>
+    <p>This is the callback function to fill buffers with audio samples. The key variables passed in are inNumberFrames and ioData. inNumberFrames is the number of audio samples requested - at 48000Hz, each sample is 1/48000th of a second of audio. ioData is a pointer to a number of buffers to fill. This will be one buffer per sound channel, so we expect just one buffer. To produce a square wave, we just swap between the minimum and maximum values every wavelength/2 samples. The wavelength is calculated in the CalculateWavelength() function.</p>
+
+    <code>        while (!quit && !restart_audio) {
+            UInt32 is_running = 0;
+            if (AudioUnitGetProperty(tone_unit, kAudioOutputUnitProperty_IsRunning, kAudioUnitScope_Global, 0, &is_running, &(UInt32){sizeof(is_running)}) != noErr || !is_running) {
+                LOG ("Device not running");
+                restart_audio = true;
+                break;
+            }</code>
+    <p>After calling AudioUnitOutputStart, the audio will run on its own thread, but our main thread needs to keep running to keep the program open. In the main loop, I check for the IsRunning property to detect if the audio unit has stopped for any reason, then restart the audio from scratch.</p>
+
+    <script src="/scripts/prev-next-step.js" path_prev="../../opengl/macos/" path_next="/#oasis1" label_next="Continue the Path"></script>
+
+    <script src="/scripts/footer.js"></script>
+</body>
+
+</html>

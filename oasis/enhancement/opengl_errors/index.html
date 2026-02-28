@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/scripts/head.js"></script>
+</head>
+
+<body>
+    <script src="/scripts/header.js"></script>
+
+    <h2>OpenGL helpful error messages</h2>
+
+    <h3 style="text-align:left;">References</h3>
+    <ul>
+        <li><a href="https://registry.khronos.org/OpenGL-Refpages/gl2.1/" target="_blank">OpenGL 2.1, GLX, and GLU Reference Pages</a></li>
+    </ul>
+
+    <p>Add the following code to your existing OpenGL application:</p>
+
+    <script src="/scripts/embed-code.js" data-src="src/main.c"></script>
+    <p>To build, ensure you link to GLU. (Linux: GLU, Windows: glu32, MacOS: included when linking -framework OpenGL).</p>
+    <hr/>
+
+    <p>OpenGL functions don't directly return errors - instead, they generally return void and store the errors in the driver. In order to discover that any errors have occured, you must call glGetError(). This function prints out all errors currently recorded, clearing them, then returns true if there were any errors. Try adding the following after every gl() function call in your program to catch errors quickly:</p>
+    <code>assert (!GLHadError());</code>
+    <hr/>
+
+    <h3 style="text-align:left;">Notes</h3>
+    <p>Calling glGetError() inside a glBegin()/glEnd() pair is invalid and will actually <i>cause</i> an error!</p>
+    <p>glGetError() may be rather slow, so it should only be used so heavily in debug mode - putting GLHadError() inside an assertion ensures these calls are removed when compiling in release modes.</p>
+
+    <script src="/scripts/prev-next-step.js" path_next="/#oasis1" label_next="Back to the Path"></script>
+
+    <script src="/scripts/footer.js"></script>
+</body>
+
+</html>
