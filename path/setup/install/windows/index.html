@@ -18,7 +18,7 @@
     <p>Special thanks to Brecht Sanders, creator of WinLibs which enables us to install almost everything in one easy package. Cheers Brecht!</p>
 
     <h3 id="winget">WinGet</h3>
-    <p>Open a terminal window (powershell or cmd). Enter the following command:</p>
+    <p>Open a <b>Powershell</b> window (NOT cmd). Enter the following command:</p>
     <code>winget install BrechtSanders.WinLibs.POSIX.UCRT Git.Git</code>
     <p>If the above works, great! Now <a href="#verify">verify with the commands at the bottom of the page.</a> If it didn't work, you can install things manually...</p>
 
@@ -28,7 +28,7 @@
         <li>Download the latest Win64 release - it should have POSIX threads, UCRT.
         <br/><img src="assets/download.webp" style="margin-top:.3em;" /><br/></li>
         <li>Open the downloaded file. It should contain a single folder, called "mingw64". Extract that folder to a place of your choosing - I recommend the root of your main drive (C: in most cases).</li>
-        <li>Test that the downloaded GCC works by opening a terminal window (powershell or cmd) and type the following command (change the directory if you used something different):
+        <li>Test that the downloaded GCC works by opening a Powershell window and type the following command (change the directory if you used something different):
             <code>C:/mingw64/bin/gcc.exe --version</code>
             You should see something like the following:
             <code>gcc.exe (MinGW-W64 x86_64-ucrt-posix-seh, built by Brecht Sanders, r5) 15.2.0
@@ -45,7 +45,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.</cod
         </li>
         <li>Click "New" and copy-paste the full directory containing gcc.exe - if you copied the mingw64 folder to the root of your C: drive, this will be "C:/mingw64/bin"</li>
         <li>Click OK on each window to close them.</li>
-        <li>Close any open terminal windows and open a new one. Type:
+        <li>Close any open Powershell windows and open a new one. Type:
             <code>gcc --version</code>
         </li
     </ol>
@@ -53,7 +53,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.</cod
     <ol>
         <li>Visit the <a href="https://gitforwindows.org/" target="_blank">GitForWindows.org</a> website and download the installer.</li>
         <li>Run the installer and follow the prompts.</li>
-        <li>When complete, open a terminal and type the following command:
+        <li>When complete, open a Powershell and type the following command:
             <code>git --version</code>
         </li>
     </ol>
