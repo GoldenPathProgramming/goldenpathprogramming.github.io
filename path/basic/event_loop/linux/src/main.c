@@ -32,7 +32,7 @@ int main () {
     if (WM_DELETE_WINDOW != None)
         { const auto result = XSetWMProtocols (display, window, &WM_DELETE_WINDOW, 1); assert (result); }
 
-    XkbSetDetectableAutoRepeat (os_private.x11.display, True, 0); // No key repeat when holding key down
+    XkbSetDetectableAutoRepeat (display, True, 0); // No key repeat when holding key down
 
     bool quit = false;
     while (!quit) {
