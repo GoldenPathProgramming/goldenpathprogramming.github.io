@@ -34,17 +34,17 @@
     CoInitializeEx(NULL, 0);
     defer (CoUninitialize());
 
-	{ DWORD task_index = 0; AvSetMmThreadCharacteristics(TEXT("Pro Audio"), &task_index); }
+    { DWORD task_index = 0; AvSetMmThreadCharacteristics(TEXT("Pro Audio"), &task_index); }
 
-	IMMDeviceEnumerator *device_enumerator = NULL;
-	CoCreateInstance(&CLSID_MMDeviceEnumerator, NULL, CLSCTX_ALL, &IID_IMMDeviceEnumerator, (void**)&device_enumerator);</code>
+    IMMDeviceEnumerator *device_enumerator = NULL;
+    CoCreateInstance(&CLSID_MMDeviceEnumerator, NULL, CLSCTX_ALL, &IID_IMMDeviceEnumerator, (void**)&device_enumerator);</code>
     <p>WASAPI relies on the Windows COM library, which must be initialized (and before closing, uninitialized). We set the thread priority to "Pro Audio". "Games" is another option, but Pro Audio guarantees lower latency if available, and higher priority over other threads. Then we create a device enumerator which will be used to retrieve the audio devices.</p>
 
-    <code>while (restart_audio) {
+    <code>    while (restart_audio) {
         restart_audio = false;</code>
     <p>I wrapped all the audio setup code in this loop so that it can be automatically re-run just by setting this restart_audio variable on certain errors. This allows sound recovery without restarting the program.</p>
 
-    <code>client->lpVtbl->IsFormatSupported (client, AUDCLNT_SHAREMODE_SHARED, &wave_format.Format, &wave_format_closest);</code>
+    <code>        client->lpVtbl->IsFormatSupported (client, AUDCLNT_SHAREMODE_SHARED, &wave_format.Format, &wave_format_closest);</code>
     <p>While we can request a certain audio format (signed 16-bit PCM 48KHz), WASAPI is by no means guaranteed to give it to us, so we need to handle various kinds of output formats. I'm under the impression that it's only important to support the variants of PCM and float - the rest are compressed formats which Windows shouldn't ever require from your application.</p>
 
     <code>static IMMNotificationClient notification_client = {
@@ -60,7 +60,7 @@
     }
 };
 
-    device_enumerator->lpVtbl->RegisterEndpointNotificationCallback (device_enumerator, &notification_client);</code>
+        device_enumerator->lpVtbl->RegisterEndpointNotificationCallback (device_enumerator, &notification_client);</code>
     <p>This notification callback business allows us to receive several types of notifications. The key one is OnDefaultDeviceChange - if you want to automatically output to the default device, this notification is how you find out it has changed so you can restart your audio system. Like everything Microsoft wrote after the Windows XP days, it is insanely overcomplicated.</p>
 
     <p>Everything else in main.c is either self-explanatory from the names involved, or cannot be easily explained without simply referring to the documentation - so I encourage you to read through the main function, and look up each thing in Microsoft's docs. Good luck!</p>
