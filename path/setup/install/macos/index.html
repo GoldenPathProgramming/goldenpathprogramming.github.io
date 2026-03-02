@@ -25,7 +25,7 @@ cmake --version
 lldb --version
 git --version</code>
 
-    <p>At time of writing, Apple's XCode is not based on the latest llvm version 22, but some of my code requires this version or later. You've installed Clang via Homebrew, but make sure the output of "clang --version" is something like, "Homebrew clang version xxx," not "Apple clang version xxx." If yours reports an Apple Clang version, type this command into your terminal:</p>
+    <p>At time of writing, Apple's XCode is not based on the latest llvm version 22, but my code requires version 22 or later. You've installed Clang via Homebrew, but make sure the output of "clang --version" is something like, "Homebrew clang version xxx," not "Apple clang version xxx." If yours reports an Apple Clang version, copy this command into your terminal:</p>
     <code>echo 'export PATH="/opt/homebrew/opt/llvm/bin:$PATH"' >> ~/.zshrc</code>
     <p>Restart your terminal and check again.</p>
 
