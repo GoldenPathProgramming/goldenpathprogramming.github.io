@@ -8,18 +8,27 @@
 <body>
     <script src="/scripts/header.js"></script>
 
-    <h2>Installing GCC, CMake, GDB, and Git on Linux</h2>
+    <h2>Installing GCC 15+, CMake, GDB, and Git on Linux</h2>
 
     <p>Arch (SteamOS, CachyOS, Omarchy, EndeavourOS): <code>sudo pacman -S base-devel cmake gdb git libx11</code></p>
-    <p>Debian (Ubuntu, Mint): <code>sudo apt install gcc-15 cmake gdb git libx11-dev</code></p>
-    
+    <p>Debian (Ubuntu, Mint): <code>sudo apt install gcc-15 cmake gdb git libx11-dev libxrandr-dev libgl-dev libglu-dev libpulse-dev</code></p>
+
     <p>For other distros, please search for a <a href="/community.html">Community</a> guide.</p>
 
-<p>Check your installation with the following commands (press enter after each one and check the output):</p>
+<p>Check your installation with the following commands (press enter after each one and check the output). Ensure that GCC is at least version 15.</p>
 <code>gcc --version
 cmake --version
 gdb --version
 git --version</code>
+
+    <p><b>NOTE:</b> Your distribution may not package the latest GCC version. If that is the case, you may install it via the <a href="https://brew.sh/" target="_blank">Homebrew package manager.</a> Follow Homebrew's installation instructions, then install GCC with:</p>
+    <code>brew install gcc</code>
+
+    <p>You may instead try clang (version 22 or later), which can also be installed via Homebrew:</p>
+    <code>brew install llvm</code>
+
+    <p>Check clang's version with:</p>
+    <code>clang --version</code>
 
     <script src="/scripts/prev-next-step.js" path_prev="/#way0" label_prev="Back to the Path" path_next="../../sanity/linux/"></script>
 
