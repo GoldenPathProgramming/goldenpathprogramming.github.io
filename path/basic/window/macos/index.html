@@ -84,7 +84,7 @@
     <p>activate sends a request to the OS to actually create and show the window, and start processing our app.</p>
 
     <code>    while (!quit) {
-		NSEvent *e = [NSApp nextEventMatchingMask:NSEventMaskAny untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:YES];
+        NSEvent *e = [NSApp nextEventMatchingMask:NSEventMaskAny untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:YES];
         if (e) [NSApp sendEvent:e];
         [NSApp updateWindows];
     }</code>

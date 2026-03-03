@@ -46,7 +46,7 @@ int main () {
     [NSApp activate];
 
     while (!quit) {
-		NSEvent *e = [NSApp nextEventMatchingMask:NSEventMaskAny untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:YES];
+        NSEvent *e = [NSApp nextEventMatchingMask:NSEventMaskAny untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:YES];
         if (e) [NSApp sendEvent:e];
         [NSApp updateWindows];
     }

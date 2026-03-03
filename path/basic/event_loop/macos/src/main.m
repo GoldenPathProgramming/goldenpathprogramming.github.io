@@ -60,6 +60,16 @@ enum { OSXUserEvent_WindowClose, OSXUserEvent_WindowResize, OSXUserEvent_LostFoc
 	NSEvent *event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:(NSPoint){0,0} modifierFlags:0 timestamp:[[NSProcessInfo processInfo] systemUptime] windowNumber:[window windowNumber] context:nil subtype:OSXUserEvent_WindowResize data1:size.width data2:size.height];
 	[NSApp postEvent:event atStart:false];
 }
+- (void)mouseEntered:(NSEvent *)event {
+    printf("Mouse entered content view tracking area\n");
+}
+- (void)mouseExited:(NSEvent *)event {
+    printf("Mouse exited content view tracking area\n");
+}
+- (void)mouseMoved:(NSEvent *)event {
+    NSPoint p = [[window contentView] convertPointToBacking:[event locationInWindow]];
+    printf("Mouse moved inside content view tracking area: %.1f %.1f\n", p.x, p.y);
+}
 @end
 
 const char *KeycodeStr (uint8_t code);
@@ -86,6 +96,10 @@ int main () {
     [NSApp setDelegate:[AppDelegate new]];
     [window setDelegate:[WindowDelegate new]];
 
+    NSView *content_view = [window contentView];
+    NSTrackingArea *tracking_area = [[NSTrackingArea alloc] initWithRect:content_view.bounds options:NSTrackingMouseEnteredAndExited | NSTrackingMouseMoved | NSTrackingActiveAlways | NSTrackingInVisibleRect owner:[window delegate] userInfo:nil];
+    [content_view addTrackingArea:tracking_area];
+
     [NSApp activate];
 
     while (!quit) {
@@ -95,14 +109,6 @@ int main () {
         bool pressed = true; // Used to group together key press/release events into the same code
         if (e) {
             switch ([e type]) {
-                case NSEventTypeLeftMouseDragged:
-                case NSEventTypeRightMouseDragged:
-                case NSEventTypeOtherMouseDragged:
-                case NSEventTypeMouseMoved: {
-                    NSPoint ep = [[window contentView] convertPointToBacking:[e locationInWindow]];
-                    printf ("Mouse moved: %f, %f\n", ep.x, ep.y);
-                } break;
-
                 case NSEventTypeLeftMouseUp:
                 case NSEventTypeRightMouseUp:
                 case NSEventTypeOtherMouseUp:
@@ -185,8 +191,6 @@ int main () {
                     }
                 } break;
                 
-                case NSEventTypeMouseEntered: puts ("Mouse entered"); break;
-                case NSEventTypeMouseExited: puts ("Mouse exited"); break;
                 default: break;
             }
 

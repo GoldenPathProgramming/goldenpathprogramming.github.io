@@ -17,48 +17,12 @@
         <li><a href="https://developer.apple.com/documentation/appkit?language=objc" target="_blank">Obj-C/Cocoa API Reference</a></li>
     </ul>
 
-    <p>We already had a basic event loop just to , but now we'll handle all the events you're likely to need for your game/app. The setup code is the same; the delegates and event loop have extra code this time.</p>
+    <p>We already had a basic event loop just to make the window show up, but now we'll handle all the events you're likely to need for your game/app. The setup code is mostly the same; the delegates and event loop have extra code this time.</p>
 
     <script src="/scripts/embed-code.js" data-src="src/main.m"></script>
     <p>Build with:</p>
-    <code>clang main.c -framework Cocoa</code>
+    <code>clang main.m -framework Cocoa</code>
     <hr/>
-
-    <code>enum { OSXUserEvent_WindowClose, OSXUserEvent_WindowResize, OSXUserEvent_LostFocus, OSXUserEvent_EnterFullscreen, OSXUserEvent_ExitFullscreen, };
-</code>
-    <p>These are user event values. You can set them to anything - they're entirely created and used by your own code. I like to just put them in an enum to give them all a unique value.</p>
-
-    <code>-(NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication*)sender {
-	NSEvent *event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:(NSPoint){0,0} modifierFlags:0 timestamp:[[NSProcessInfo processInfo] systemUptime] windowNumber:[window windowNumber] context:nil subtype:OSXUserEvent_WindowClose data1:0 data2:0];
-	[NSApp postEvent:event atStart:true];
-	return NSTerminateCancel;
-}</code>
-    <p>We create an event with [NSEvent otherEventWithType:NSEventTypeApplicationDefined ...]. subtype is where we use our custom OSXUserEvent enum. In [NSApp postEvent ...] you have the choice of posting it to the start of the event queue, so that it's the next event to be processed. I only use this for quit events, since there's no point processing remaining events.</p>
-
-    <code>-(void)windowDidResignKey:(NSNotification*)notification {
-	NSEvent *event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:(NSPoint){0,0} modifierFlags:0 timestamp:[[NSProcessInfo processInfo] systemUptime] windowNumber:[window windowNumber] context:nil subtype:OSXUserEvent_LostFocus data1:0 data2:0];
-	[NSApp postEvent:event atStart:false];
-}</code>
-    <p>windowDidResignKey means your window is no longer the "key window" - Apple's term for the window with focus.</p>
-
-    <code>-(void)windowDidResize:(NSNotification *)notification {
-	if (live_resizing) return;
-	NSSize size = WINDOW_CONTENT_SIZE;
-	NSEvent *event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:(NSPoint){0,0} modifierFlags:0 timestamp:[[NSProcessInfo processInfo] systemUptime] windowNumber:[window windowNumber] context:nil subtype:OSXUserEvent_WindowResize data1:size.width data2:size.height];
-	[NSApp postEvent:event atStart:false];
-}</code>
-    <p>Here you see how to use the data1 and data2 fields to pass additional information along with an event. Note the if (live_resizing) check - you don't want to post thousands of resize events during a live resize, as that can cause live resizing to slow down tremendously. Since we aren't doing much on resize it may not show an effect, but if you do anything significant on resize, this can be very slow. Try commenting out this check and see how many resize events are posted!</p>
-
-    <code>-(void)windowWillStartLiveResize:(NSNotification *)notification {
-	live_resizing = true;
-}
--(void)windowDidEndLiveResize:(NSNotification *)notification {
-	live_resizing = false;
-	NSSize size = WINDOW_CONTENT_SIZE;
-	NSEvent *event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:(NSPoint){0,0} modifierFlags:0 timestamp:[[NSProcessInfo processInfo] systemUptime] windowNumber:[window windowNumber] context:nil subtype:OSXUserEvent_WindowResize data1:size.width data2:size.height];
-	[NSApp postEvent:event atStart:false];
-}</code>
-    <p>Here's live resizing. On start, I just set the variable to disable resize events. On end, I post a resize event and clear the live_resizing variable.</p>
 
     <p>Most events are self-explanatory, but I'll explore a few.</p>
 
@@ -118,6 +82,59 @@
                     }
                 } break;</code>
     <p>Ah, the user events! Finally, something that just works exactly as you'd expect.</p>
+
+    <code>enum { OSXUserEvent_WindowClose, OSXUserEvent_WindowResize, OSXUserEvent_LostFocus, OSXUserEvent_EnterFullscreen, OSXUserEvent_ExitFullscreen, };
+</code>
+    <p>These are user event values. You can set them to anything - they're entirely created and used by your own code. I like to just put them in an enum to give them all a unique value.</p>
+
+    <code>    NSView *content_view = [window contentView];
+    NSTrackingArea *tracking_area = [[NSTrackingArea alloc] initWithRect:content_view.bounds options:NSTrackingMouseEnteredAndExited | NSTrackingMouseMoved | NSTrackingActiveAlways | NSTrackingInVisibleRect owner:[window delegate] userInfo:nil];
+    [content_view addTrackingArea:tracking_area];</code>
+    <p>Mouse events in Cocoa are tricky. You can receive events with NSEventTypeMouseMoved, but I'd like to ignore events outside the content area of the window. For this purpose, and showing/hiding the cursor in a later tutorial, we create an NSTrackingArea. The options tell Cocoa what types of events we want to receive, and we add the tracking area to the contentView of our window. This will automatically updated whenever the contentView is resized.</p>
+
+    <code>- (void)mouseEntered:(NSEvent *)event {
+    printf("Mouse entered content view tracking area\n");
+}
+- (void)mouseExited:(NSEvent *)event {
+    printf("Mouse exited content view tracking area\n");
+}
+- (void)mouseMoved:(NSEvent *)event {
+    NSPoint p = [[window contentView] convertPointToBacking:[event locationInWindow]];
+    printf("Mouse moved inside content view tracking area: %.1f %.1f\n", p.x, p.y);
+}</code>
+    <p>Since we set the NSTrackingMouseEnteredAndExited and NSTrackingMouseMoved options, we must implement the associated functions to be called. Because of MacOS's HiDPI retina stuff, we can't just take the [event locationInWindow] point and have it relate directly to rendering coordinates, so we convert it to the coordinate space of the content view backing. Note that the (0,0) point is the bottom-left of your content view. If you wanted to receive mouse movement events in your event loop, you might create a user event inside the mouseMoved function. Speaking of which...</p>
+
+    <code>-(NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication*)sender {
+	NSEvent *event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:(NSPoint){0,0} modifierFlags:0 timestamp:[[NSProcessInfo processInfo] systemUptime] windowNumber:[window windowNumber] context:nil subtype:OSXUserEvent_WindowClose data1:0 data2:0];
+	[NSApp postEvent:event atStart:true];
+	return NSTerminateCancel;
+}</code>
+    <p>We create an event with [NSEvent otherEventWithType:NSEventTypeApplicationDefined ...]. subtype is where we use our custom OSXUserEvent enum. In [NSApp postEvent ...] you have the choice of posting it to the start of the event queue, so that it's the next event to be processed. I only use this for quit events, since there's no point processing remaining events.</p>
+
+    <code>-(void)windowDidResignKey:(NSNotification*)notification {
+	NSEvent *event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:(NSPoint){0,0} modifierFlags:0 timestamp:[[NSProcessInfo processInfo] systemUptime] windowNumber:[window windowNumber] context:nil subtype:OSXUserEvent_LostFocus data1:0 data2:0];
+	[NSApp postEvent:event atStart:false];
+}</code>
+    <p>windowDidResignKey means your window is no longer the "key window" - Apple's term for the window with focus.</p>
+
+    <code>-(void)windowDidResize:(NSNotification *)notification {
+	if (live_resizing) return;
+	NSSize size = WINDOW_CONTENT_SIZE;
+	NSEvent *event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:(NSPoint){0,0} modifierFlags:0 timestamp:[[NSProcessInfo processInfo] systemUptime] windowNumber:[window windowNumber] context:nil subtype:OSXUserEvent_WindowResize data1:size.width data2:size.height];
+	[NSApp postEvent:event atStart:false];
+}</code>
+    <p>Here you see how to use the data1 and data2 fields to pass additional information along with an event. Note the if (live_resizing) check - you don't want to post thousands of resize events during a live resize, as that can cause live resizing to slow down tremendously. Since we aren't doing much on resize it may not show an effect, but if you do anything significant on resize, this can be very slow. Try commenting out this check and see how many resize events are posted!</p>
+
+    <code>-(void)windowWillStartLiveResize:(NSNotification *)notification {
+	live_resizing = true;
+}
+-(void)windowDidEndLiveResize:(NSNotification *)notification {
+	live_resizing = false;
+	NSSize size = WINDOW_CONTENT_SIZE;
+	NSEvent *event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:(NSPoint){0,0} modifierFlags:0 timestamp:[[NSProcessInfo processInfo] systemUptime] windowNumber:[window windowNumber] context:nil subtype:OSXUserEvent_WindowResize data1:size.width data2:size.height];
+	[NSApp postEvent:event atStart:false];
+}</code>
+    <p>Here's live resizing. On start, I just set the variable to disable resize events. On end, I post a resize event and clear the live_resizing variable.</p>
     
     <script src="/scripts/prev-next-step.js" path_prev="../../window/macos/" path_next="../../opengl/macos/"></script>
 
