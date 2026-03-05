@@ -13,7 +13,7 @@
     <p>Due to my use of C23 features and defer, the code of the Golden Path requires GCC 15+ or Clang 22+.</p>
 
     <p>Arch (SteamOS, CachyOS, Omarchy, EndeavourOS): <code>sudo pacman -S base-devel cmake gdb git libx11</code></p>
-    <p>Debian (Ubuntu, Mint): <code>sudo apt install gcc-15 cmake gdb git libx11-dev libxrandr-dev libgl-dev libglu-dev libpulse-dev</code></p>
+    <p>Debian (Ubuntu, Mint): <code>sudo apt install gcc-15 cmake gdb git libx11-dev libxrandr-dev libgl-dev libglu-dev libpulse-dev libxfixes-dev</code></p>
 
     <p>For other distros, please search for a <a href="/community.html">Community</a> guide.</p>
 
@@ -23,14 +23,12 @@ cmake --version
 gdb --version
 git --version</code>
 
-    <p><b>NOTE:</b> Your distribution may not package the latest GCC version. If that is the case, you may install it via the <a href="https://brew.sh/" target="_blank">Homebrew package manager.</a> Follow Homebrew's installation instructions, then install GCC with:</p>
-    <code>brew install gcc</code>
+    <h3>Validated Community Guides</h3>
+    <ul>
+        <li><a href="https://www.reddit.com/r/GoldenPathProgramming/comments/1rlnmmh/" target="_blank">Ubuntu 24.04 (should work on many mainstream distros)</a></li>
+    </ul>
 
-    <p>You may instead try clang (version 22 or later), which can also be installed via Homebrew:</p>
-    <code>brew install llvm</code>
-
-    <p>Check clang's version with:</p>
-    <code>clang --version</code>
+    <p><b>NOTE:</b> If you are unable to get GCC-15 or later working, you may also try Clang 22+. I have particular hopes that, when Zig packages LLVM 22, I'll be able to write a guide applicable to most or all Linux distros using zig cc.</p>
 
     <script src="/scripts/prev-next-step.js" path_prev="/#way0" label_prev="Back to the Path" path_next="../../sanity/linux/"></script>
 
