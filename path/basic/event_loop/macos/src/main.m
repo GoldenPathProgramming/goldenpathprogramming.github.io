@@ -66,10 +66,6 @@ enum { OSXUserEvent_WindowClose, OSXUserEvent_WindowResize, OSXUserEvent_LostFoc
 - (void)mouseExited:(NSEvent *)event {
     printf("Mouse exited content view tracking area\n");
 }
-- (void)mouseMoved:(NSEvent *)event {
-    NSPoint p = [[window contentView] convertPointToBacking:[event locationInWindow]];
-    printf("Mouse moved inside content view tracking area: %.1f %.1f\n", p.x, p.y);
-}
 @end
 
 const char *KeycodeStr (uint8_t code);
@@ -97,7 +93,7 @@ int main () {
     [window setDelegate:[WindowDelegate new]];
 
     NSView *content_view = [window contentView];
-    NSTrackingArea *tracking_area = [[NSTrackingArea alloc] initWithRect:content_view.bounds options:NSTrackingMouseEnteredAndExited | NSTrackingMouseMoved | NSTrackingActiveAlways | NSTrackingInVisibleRect owner:[window delegate] userInfo:nil];
+    NSTrackingArea *tracking_area = [[NSTrackingArea alloc] initWithRect:content_view.bounds options:NSTrackingMouseEnteredAndExited | NSTrackingActiveAlways | NSTrackingInVisibleRect | NSTrackingEnabledDuringMouseDrag owner:[window delegate] userInfo:nil];
     [content_view addTrackingArea:tracking_area];
 
     [NSApp activate];
@@ -124,6 +120,15 @@ int main () {
                     const int button_number = [e buttonNumber];
                     if (button_number < 5) button_name = mouse_button_name[button_number];
                     printf ("Mouse button %d(%s) %s at %f, %f\n", button_number, button_name, pressed ? "pressed" : "released", ep.x, ep.y);
+                } break;
+
+                case NSEventTypeMouseMoved:
+                case NSEventTypeLeftMouseDragged:
+                case NSEventTypeRightMouseDragged:
+                case NSEventTypeOtherMouseDragged: {
+                    NSPoint p = [[window contentView]
+                    convertPointToBacking:[e locationInWindow]];
+                    printf("Mouse moved: %.1f %.1f\n", p.x, p.y);
                 } break;
 
                 case NSEventTypeScrollWheel: {

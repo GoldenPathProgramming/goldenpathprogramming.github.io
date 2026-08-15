@@ -88,21 +88,27 @@
     <p>These are user event values. You can set them to anything - they're entirely created and used by your own code. I like to just put them in an enum to give them all a unique value.</p>
 
     <code>    NSView *content_view = [window contentView];
-    NSTrackingArea *tracking_area = [[NSTrackingArea alloc] initWithRect:content_view.bounds options:NSTrackingMouseEnteredAndExited | NSTrackingMouseMoved | NSTrackingActiveAlways | NSTrackingInVisibleRect owner:[window delegate] userInfo:nil];
+    NSTrackingArea *tracking_area = [[NSTrackingArea alloc] initWithRect:content_view.bounds options:NSTrackingMouseEnteredAndExited | NSTrackingActiveAlways | NSTrackingInVisibleRect | NSTrackingEnabledDuringMouseDrag owner:[window delegate] userInfo:nil];
     [content_view addTrackingArea:tracking_area];</code>
-    <p>Mouse events in Cocoa are tricky. You can receive events with NSEventTypeMouseMoved, but I'd like to ignore events outside the content area of the window. For this purpose, and showing/hiding the cursor in a later tutorial, we create an NSTrackingArea. The options tell Cocoa what types of events we want to receive, and we add the tracking area to the contentView of our window. This will automatically updated whenever the contentView is resized.</p>
+    <p>Adding a tracking area to your window allows you to detect whenever the mouse enters or exits the content area of your window. This is important for discarding mouse movement events when the mouse is outside of your window, or showing/hiding the cursor as it enters/leaves.</p>
 
     <code>- (void)mouseEntered:(NSEvent *)event {
     printf("Mouse entered content view tracking area\n");
 }
 - (void)mouseExited:(NSEvent *)event {
     printf("Mouse exited content view tracking area\n");
-}
-- (void)mouseMoved:(NSEvent *)event {
-    NSPoint p = [[window contentView] convertPointToBacking:[event locationInWindow]];
-    printf("Mouse moved inside content view tracking area: %.1f %.1f\n", p.x, p.y);
 }</code>
-    <p>Since we set the NSTrackingMouseEnteredAndExited and NSTrackingMouseMoved options, we must implement the associated functions to be called. Because of MacOS's HiDPI retina stuff, we can't just take the [event locationInWindow] point and have it relate directly to rendering coordinates, so we convert it to the coordinate space of the content view backing. Note that the (0,0) point is the bottom-left of your content view. If you wanted to receive mouse movement events in your event loop, you might create a user event inside the mouseMoved function. Speaking of which...</p>
+    <p>Since we set the NSTrackingMouseEnteredAndExited and NSTrackingMouseMoved options, we must implement the associated functions to be called.</p>
+    
+    <code>                case NSEventTypeMouseMoved:
+                case NSEventTypeLeftMouseDragged:
+                case NSEventTypeRightMouseDragged:
+                case NSEventTypeOtherMouseDragged: {
+                    NSPoint p = [[window contentView]
+                    convertPointToBacking:[e locationInWindow]];
+                    printf("Mouse moved inside window: %.1f %.1f\n", p.x, p.y);
+                } break;</code>
+    <p>We need to detect mouse movements with all 4 of these event types. Because of MacOS's HiDPI retina stuff, we can't just take the [e locationInWindow] point and have it relate directly to rendering coordinates, so we convert it to the coordinate space of the content view backing. Note that the (0,0) point is the bottom-left of your content view.</p>
 
     <code>-(NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication*)sender {
 	NSEvent *event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:(NSPoint){0,0} modifierFlags:0 timestamp:[[NSProcessInfo processInfo] systemUptime] windowNumber:[window windowNumber] context:nil subtype:OSXUserEvent_WindowClose data1:0 data2:0];
