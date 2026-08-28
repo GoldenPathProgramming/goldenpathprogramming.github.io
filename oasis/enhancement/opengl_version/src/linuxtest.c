@@ -1,5 +1,3 @@
-#include <X11/Xutil.h>
-#include <X11/Xatom.h>
 #include <GL/glx.h>
 #include <assert.h>
 #include <stdio.h>

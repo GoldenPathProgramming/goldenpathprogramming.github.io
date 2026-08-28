@@ -3,7 +3,7 @@
 typedef union {
     struct { uint8_t major, minor; };
     uint16_t full;
-} glver_t;
+} glversion_t;
 
     // After glMakeCurrent():
 

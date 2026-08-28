@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/scripts/head.js"></script>
+</head>
+
+<body>
+    <script src="/scripts/header.js"></script>
+
+    <h2>Getting OpenGL & GLX extensions on Linux</h2>
+
+    <h3 style="text-align:left;">References</h3>
+    <ul>
+        <li><a href="https://registry.khronos.org/OpenGL-Refpages/gl4/html/glCreateShader.xhtml" target="_blank">glCreateShader</a></li>
+        <li><a href="https://registry.khronos.org/OpenGL/extensions/ARB/ARB_vertex_buffer_object.txt" target="_blank">GL_ARB_vertex_buffer_object</a></li>
+        <li><a href="https://registry.khronos.org/OpenGL/extensions/EXT/EXT_swap_control.txt" target="_blank">GLX_EXT_swap_control</a></li>
+        <li><a href="https://registry.khronos.org/OpenGL/extensions/EXT/GLX_EXT_swap_control_tear.txt" target="_blank">GLX_EXT_swap_control_tear</a></li>
+        <li><a href="https://registry.khronos.org/OpenGL-Refpages/gl2.1/xhtml/glXGetProcAddress.xml" target="_blank">glXGetProcAddress</a></li>
+        <li><a href="https://registry.khronos.org/OpenGL-Refpages/" target="_blank">OpenGL reference pages</a></li>
+        <li><a href="https://registry.khronos.org/OpenGL/index_gl.php" target="_blank">OpenGL specifications and references</a></li>
+    </ul>
+
+    <p>When linking normal C libraries, your code declares the signature of the functions and variables you expect to dynamically link (usually by #including a header file), and the operating system's dynamic linker links those objects into your program at runtime. OpenGL is rather different. In the year 2000, SGI created the <a href="https://registry.khronos.org/OpenGL/ABI/" target="_blank">OpenGL ABI for Linux</a>, which included OpenGL 1.2, GLU 1.3, and GLX 1.3 symbols. Therefore, you can #include the relevant headers, dynamically link to the relevant libraries, and expect to get linked to those symbols. For any symbols exported by later versions of GL and GLX, you must query and retrieve them manually at runtime. Note that you can also use this type of mechanism to manually link symbols from other libraries, rather than creating a dynamic executable.</p>
+
+    <p>We already had an example of this in the "Specifying your OpenGL context version" tutorial with glXCreateContextAttribsARB.</p>
+
+    <script src="/scripts/embed-code.js" data-src="src/main.c"></script>
+    <p>Build with:</p>
+    <code>gcc main.c -lX11 -lGL</code>
+    <hr/>
+
+    <code>    const char *gl_extensions = (const char*)glGetString (GL_EXTENSIONS);
+    const char *glx_extensions = glXQueryExtensionsString (display,0);</code>
+    <p>OpenGL provides us a list of all available extensions in the form of a space-separated string. GLX does the same, and these two function calls are how we get them. Feel free to read through some of the GL/GLX extensions your context reports. This works in all OpenGL context versions, but if your context is 3.0 or later, you can also retrieve the number of extensions with glGetIntegerv (GL_NUM_EXTENSIONS, &extension_count) then iterate each extension as an individual string with glGetStringi (GL_EXTENSIONS, i).</p>
+
+    <code>bool GLHasExtension (const char *const haystack, const char *const needle) {
+    const char *e = haystack;
+    const auto len = strlen (needle);
+    for (;;) {
+        e = strstr (e, needle);
+        if (e == NULL) return false;
+        char next = *(e + len);
+        if (next == ' ' || next == '\0') return true;
+        e += len;
+    }
+}</code>
+    <p>This function searches for the given extension in an extension string. It's important to check that the found extension is followed by a space or NULL, because some extensions have the same name as another extension, with additional text added on, eg. GLX_EXT_swap_control and GLX_EXT_swap_control_tear. On all of my systems, every extension in the string, including the last, is followed by a space, so I could just check for the extension followed by a space to eliminate the need to check the next character. But according to <a href="https://developer.download.nvidia.com/assets/gamedev/docs/extensions.pdf" target="_blank">this nVidia document, page 6</a>, the last extension may not have a space and may just be NULL-terminated.</p>
+
+    <code>    while (glversion.full >= (glversion_t){.major = 2, .minor = 0}.full && glversion_compatibility) {
+        typedef GLuint (*glCreateShader_t) (GLenum shaderType);
+        
+        const auto glCreateShader = (glCreateShader_t)glXGetProcAddress ((const GLubyte*)"glCreateShader");
+        if (glCreateShader == NULL) {
+            puts ("Failed to retrieve glCreateShader function pointer");
+            break;
+        }
+
+        const auto vertex_shader = glCreateShader (GL_VERTEX_SHADER);
+        printf ("glCreateShader found and called: %u\n", vertex_shader);
+    break;}</code>
+    <p>glCreateShader was introduced in OpenGL 2.0, so we check the context version against that. We create a type for the function pointer. The function signature can be copied from the <a href="https://registry.khronos.org/OpenGL-Refpages/gl4/html/glCreateShader.xhtml" target="_blank">OpenGL specification.</a> Next, we use glXGetProcAddress to request the symbol by name, casting the pointer to the correct type. If the symbol exists, we'll have its address. If not, glxGetProcAddress returns NULL. After retrieving the function pointer and verifying we got it, we call it just to demonstrate that it works.</p>
+    
+    <p>When retrieving a function that is part of a specific OpenGL version specification, you can just check that your context is a compatible version and then retrieve the function pointer. Given this, if you know all of your GL functions are from version 2.1 and earlier, for example, you can do a single check for the version, then retrieve all the functions pointers.</p>
+
+    <code>    if (GLHasExtension (gl_extensions, "GL_ARB_vertex_buffer_object")) {
+        do {
+            typedef void (*glGenBuffersARB_t) (GLsizei n, GLuint *buffers);
+
+            const auto glGenBuffersARB = (glGenBuffersARB_t)glXGetProcAddress ((const GLubyte*)"glGenBuffersARB");
+            if (glGenBuffersARB == NULL) {
+                puts ("Failed to retrieve glGenBuffersARB function pointer");
+                break;
+            }
+
+            GLuint buffer = 0;
+            glGenBuffersARB (1, &buffer);
+            printf ("glGenBuffersARB found and called: %d\n", buffer);
+        } while (false);
+    }</code>
+    <p>Here we check for the extension, GL_ARB_vertex_buffer_object, then get the function pointer for glGenBuffersARB. Pretty much the same as for glCreateShader, except it's an extension function, not an OpenGL core specification function.</p>
+
+    <code>    if (GLHasExtension (glx_extensions, "GLX_EXT_swap_control_tear")) {
+        do {
+            typedef void (*glXSwapIntervalEXT_t)(Display *dpy, GLXDrawable drawable, int interval);
+
+            const auto glXSwapIntervalEXT = (glXSwapIntervalEXT_t)glXGetProcAddress((const GLubyte*)"glXSwapIntervalEXT");
+            if (glXSwapIntervalEXT == NULL) {
+                puts ("Failed to retrieve glXSwapIntervalEXT function pointer");
+                break;
+            }
+            glXSwapIntervalEXT (display, xwindow, -1);
+            puts ("glXSwapIntervalEXT found and called");
+        } while (false);
+    }</code>
+    <p>Note that since we're checking for a GLX extension, we pass the glx_extensions string to GLHasExtension. Other than that, this is practically the same as the prior code.</p>
+
+    <p>You may wonder: why check for the version/extension at all? Why not just attempt to retrieve the function pointer without checking those things? In many cases that will work, but glXSwapIntervalEXT is a good example of why it is sometimes necessary to check for the relevant extension first. You see, glXSwapIntervalEXT is included in two different extensions: GLX_EXT_swap_control, and GLX_EXT_swap_control_tear. If the _tear extension is present, you can call glXSwapIntervalEXT with a -1 interval value in order to allow tearing when the framerate dips below the vertical sync rate. But when only the non-tear extension is present, the function fails when called with a negative value.</p>
+
+    <p>The above code works for retrieving any GL and GLX functions not included in the ABI. In my game engine, I use fewer than 20 such functions, so I just created a simple macro and called it once for each function. If you're using more functions than that, or want to retrieve everything up to a particular version of OpenGL, you might use a library such as <a href="https://github.com/nigels-com/glew" target="_blank">GLEW</a> or <a href="https://gen.glad.sh/" target="_blank">Glad</a>, or you could download the <a href="https://cvs.khronos.org/svn/repos/ogl/trunk/doc/registry/public/api/gl.xml" target="_blank">OpenGL API registry XML</a> and <a href="https://cvs.khronos.org/svn/repos/ogl/trunk/doc/registry/public/api/glx.xml" target="_blank">GLX API registry XML</a>, and write a program to parse them and generate your own code for loading extensions. This is what I plan to do whenever I use more OpenGL in my next engine.</p>
+
+    <script src="/scripts/prev-next-step.js" path_next="/#oasis0" label_next="Back to the Path"></script>
+
+    <script src="/scripts/footer.js"></script>
+</body>
+
+</html>

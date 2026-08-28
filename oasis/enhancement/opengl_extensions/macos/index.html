@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/scripts/head.js"></script>
+</head>
+
+<body>
+    <script src="/scripts/header.js"></script>
+
+    <h2>Getting OpenGL extensions on MacOS</h2>
+
+    <h3 style="text-align:left;">References</h3>
+    <ul>
+        <li><a href="https://registry.khronos.org/OpenGL-Refpages/gl4/html/glCreateShader.xhtml" target="_blank">glCreateShader</a></li>
+        <li><a href="https://registry.khronos.org/OpenGL/extensions/ARB/ARB_vertex_buffer_object.txt" target="_blank">GL_ARB_vertex_buffer_object</a></li>
+        <li><a href="https://registry.khronos.org/OpenGL-Refpages/" target="_blank">OpenGL reference pages</a></li>
+        <li><a href="https://registry.khronos.org/OpenGL/index_gl.php" target="_blank">OpenGL specifications and references</a></li>
+        <li><a href="https://developer.apple.com/library/archive/documentation/GraphicsImaging/Conceptual/OpenGL-MacProgGuide/opengl_entrypts/opengl_entrypts.html" target="_blank">Setting Up Function Pointers to OpenGL Routines</a></li>
+        <li><a href="https://web.archive.org/web/20120606214813/https://opensource.apple.com/source/dyld/dyld-132.13/src/dyldAPIs.cpp" target="_blank">NSLookupAndBindSymbol source code</a></li>
+        <li><a href="https://developer.apple.com/documentation/appkit/opengl-profiles?language=objc" target="_blank">OpenGL Profiles Apple Reference</a></li>
+        <li><a href="https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/ProgrammingWithObjectiveC/Introduction/Introduction.html" target="_blank">Objective-C Programming Guide</a></li>
+        <li><a href="https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/CocoaFundamentals/Introduction/Introduction.html" target="_blank">Cocoa Fundamentals</a></li>
+        <li><a href="https://developer.apple.com/documentation/appkit?language=objc" target="_blank">Obj-C/Cocoa API Reference</a></li>
+    </ul>
+
+    <p>When linking normal C libraries, your code declares the signature of the functions and variables you expect to dynamically link (usually by #including a header file), and the operating system's dynamic linker links those objects into your program at runtime. OpenGL is rather different - although less so on MacOS than Windows/Linux. Apple controls both the hardware and software for their MacOS platform, and they provide their own implementations of OpenGL. Apple deprecated OpenGL in 2018, but their implementation is built on top of Metal so it continues to work well on their new hardware. The last major update to their GL implementation was in MacOS 10.9, upgrading to OpenGL 4.1. So, if you target MacOS 10.9 or later, you can safely assume you'll have access to 2.1, 3.2, and 4.1 contexts with all their symbols. Extensions still need to be retrieved manually at runtime. Note that you can also use this type of mechanism to manually link symbols from other libraries, rather than creating a dynamic executable.</p>
+
+    <script src="/scripts/embed-code.js" data-src="src/main.m"></script>
+    <p>Build with:</p>
+    <code>clang main.m -std=gnu2y -framework Cocoa -framework OpenGL</code>
+    <hr/>
+
+    <code>    const char *gl_extensions = (const char*)glGetString (GL_EXTENSIONS);</code>
+    <p>OpenGL provides us a list of all available extensions in the form of a space-separated string. Feel free to read through some of the GL extensions your context reports. This works in all OpenGL context versions, but if your context is 3.0 or later, you can also retrieve the number of extensions with glGetIntegerv (GL_NUM_EXTENSIONS, &extension_count) then iterate each extension as an individual string with glGetStringi (GL_EXTENSIONS, i).</p>
+
+    <code>bool GLHasExtension (const char *const haystack, const char *const needle) {
+    const char *e = haystack;
+    const auto len = strlen (needle);
+    for (;;) {
+        e = strstr (e, needle);
+        if (e == NULL) return false;
+        char next = *(e + len);
+        if (next == ' ' || next == '\0') return true;
+        e += len;
+    }
+}</code>
+    <p>This function searches for the given extension in an extension string. It's important to check that the found extension is followed by a space or NULL, because some extensions have the same name as another extension, with additional text added on, eg. GL_ARB_shadow and GL_ARB_shadow_ambient. On all of my systems, every extension in the string, including the last, is followed by a space, so I could just check for the extension followed by a space to eliminate the need to check the next character. But according to <a href="https://developer.download.nvidia.com/assets/gamedev/docs/extensions.pdf" target="_blank">this nVidia document, page 6</a>, the last extension may not have a space and may just be NULL-terminated.</p>
+
+    <code>    NSOpenGLPixelFormatAttribute glAttributes[] = {
+        NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersionLegacy,
+
+        [...]
+
+    const auto vertex_shader = glCreateShader (GL_VERTEX_SHADER);</code>
+    <p>glCreateShader was added in version 2.0. Since we've requested a legacy 2.1 context, we can just go right ahead and call functions included in that version.</p>
+
+    <code>#include &lt;dlfcn.h&gt;
+
+[...]
+
+    const auto gldll = dlopen ("/System/Library/Frameworks/OpenGL.framework/OpenGL", RTLD_LAZY);</code>
+    <p>We used to be able to use NSLookupAndBindSymbol to find dynamic symbols, but Apple has deprecated it. Now, this is the standard way of loading OpenGL extension functions. dlfcn is the POSIX library used for dynamic linking. Here we open the OpenGL dynamic library, from which we will be retrieving GL extension functions.</p>
+
+    <code>    if (GLHasExtension (gl_extensions, "GL_ARB_vertex_buffer_object")) {
+        do {
+            typedef void (*glGenBuffersARB_t) (GLsizei n, GLuint *buffers);
+
+            const auto glGenBuffersARB = (glGenBuffersARB_t)dlsym (gldll, "glGenBuffersARB");
+            if (glGenBuffersARB == NULL) {
+                puts ("Failed to retrieve glGenBuffersARB function pointer");
+                break;
+            }
+
+            GLuint buffer = 0;
+            glGenBuffersARB (1, &buffer);
+            printf ("glGenBuffersARB found and called: %d\n", buffer);
+        } while (false);
+    }</code>
+    <p>First we check for the presence of the extension we want. Then, we create a type for the function pointer. The function signature can be copied from the <a href="https://registry.khronos.org/OpenGL/extensions/ARB/ARB_vertex_buffer_object.txt" target="_blank">extension specification.</a> Next, we use dlsym to request the symbol by name, casting the pointer to the correct type. If the symbol exists, we'll have its address. If not, dlsym returns NULL. After retrieving the function pointer and verifying we got it, we call it just to demonstrate that it works.</p>
+
+    <p>You may wonder: why check for the version/extension at all? Why not just attempt to retrieve the function pointer without checking those things? In many cases that will work, but it is sometimes necessary to check for the relevant extension first, because the same functions may be implemented with slight differences by different extensions.</p>
+
+    <p>The above code works for retrieving any GL extension functions. However, if you find you need to repeat the above code a lot to retrieve a lot of extensions, you might use a library such as <a href="https://github.com/nigels-com/glew" target="_blank">GLEW</a> or <a href="https://gen.glad.sh/" target="_blank">Glad</a>, or generate your code for loading many extensions.</p>
+
+    <script src="/scripts/prev-next-step.js" path_next="/#oasis0" label_next="Back to the Path"></script>
+
+    <script src="/scripts/footer.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/scripts/head.js"></script>
+</head>
+
+<body>
+    <script src="/scripts/header.js"></script>
+
+    <h2>Using Basic OpenGL 2.1 Shaders</h2>
+
+    <h3 style="text-align:left;">References</h3>
+    <ul>
+        <li><a href="https://registry.khronos.org/OpenGL/specs/gl/GLSLangSpec.1.20.pdf" target="_blank">The OpenGL Shading Language Version 1.20</a></li>
+        <li><a href="https://registry.khronos.org/OpenGL-Refpages/" target="_blank">OpenGL reference pages</a></li>
+        <li><a href="https://registry.khronos.org/OpenGL/index_gl.php" target="_blank">OpenGL specifications and references</a></li>
+    </ul>
+
+    <p>The first thing I want you to understand about shaders is this: ignore the name, "shader." Shader just means, "program that runs on the GPU instead of the CPU." They come in the form of source code, and they're compiled by the graphics driver for the graphics card. They generally run highly parallelized; many instances of a shader program run on different vertices or fragments at once. OpenGL uses GLSL, and many things changed over the years between versions. Each OpenGL version has an associated GLSL version. This is not an in-depth tutorial on how to write GLSL shaders - just how to get basic shaders working to get started.</p>
+
+    <p>The core shader code is the same across platforms. Following the prior tutorials, you can create an OpenGL 2.1 or legacy context, and retrieve all the required functions. This page shows the new code, but full examples for each platform are available here:</p>
+    <ul>
+        <li><a href="src/linux.c" target="_blank">Linux</a>
+        <li><a href="src/windows.c" target="_blank">Windows</a>
+        <li><a href="src/macos.m" target="_blank">MacOS</a>
+    </ul>
+
+    <script src="/scripts/embed-code.js" data-src="src/main.c"></script>
+    <hr/>
+
+    <code>typedef GLuint (*glCreateShader_t) (GLenum shaderType); glCreateShader_t glCreateShader;
+typedef void (*glShaderSource_t) (GLuint shader, GLsizei count, const GLchar **string, const GLint *length); glShaderSource_t glShaderSource;
+typedef void (*glCompileShader_t) (GLuint shader); glCompileShader_t glCompileShader;
+typedef void (*glGetShaderiv_t) (GLuint shader, GLenum pname, GLint *params); glGetShaderiv_t glGetShaderiv;
+typedef void (*glGetShaderInfoLog_t) (GLuint shader, GLsizei maxLength, GLsizei *length, GLchar *infoLog); glGetShaderInfoLog_t glGetShaderInfoLog;
+typedef GLuint (*glCreateProgram_t) (); glCreateProgram_t glCreateProgram;
+typedef void (*glAttachShader_t) (GLuint program, GLuint shader); glAttachShader_t glAttachShader;
+typedef void (*glLinkProgram_t) (GLuint program); glLinkProgram_t glLinkProgram;
+typedef void (*glGetProgramInfoLog_t) (GLuint program, GLsizei maxLength, GLsizei *length, GLchar *infoLog); glGetProgramInfoLog_t glGetProgramInfoLog;
+typedef void (*glDeleteShader_t) (GLuint shader); glDeleteShader_t glDeleteShader;
+typedef void (*glUseProgram_t) (GLuint program); glUseProgram_t glUseProgram;
+typedef void (*glValidateProgram_t) (GLuint program); glValidateProgram_t glValidateProgram;
+typedef void (*glGetProgramiv_t) (GLuint program, GLenum pname, GLint *params); glGetProgramiv_t glGetProgramiv;</code>
+    <p>These are the prototypes for all the functions used in this new code. You'll need these on Linux/Windows, but not on MacOS.</p>
+
+    <code>    const auto vertex = glCreateShader (GL_VERTEX_SHADER);
+    glShaderSource (vertex, 1, &(const char*){
+R"(#version 120
+
+varying vec4 color;
+
+void main()
+{
+    vec4 scale = vec4(1, 0.25, 1, 1);
+    gl_Position = gl_ModelViewProjectionMatrix * scale * gl_Vertex;
+    color = gl_Color;
+})"}, NULL);</code>
+    <p>We create a new vertex shader, then give the shader's source code to the driver. I like to write my shaders as raw strings (GCC and Clang extension) inside my source code. This shader uses a few built-in variables - the ones prefixed with "gl_" - as inputs and outputs. It scales the Y axis of the vertex by 0.25, and passes through the vertex color in the "color" variable.</p>
+
+    <code>    glCompileShader (vertex);
+    int success = 0;
+    glGetShaderiv (vertex, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        char buf[512];
+        glGetShaderInfoLog (vertex, sizeof (buf), NULL, buf);
+        printf ("OpenGL vertex shader compilation error: %s\n", buf);
+        return -1;
+    }</code>
+    <p>We ask the OpenGL driver to compile the shader for the graphics harware, then check for compilation errors. Try messing with the shader source code and see what errors you get!</p>
+
+    <code>    const auto fragment = glCreateShader (GL_FRAGMENT_SHADER);
+    glShaderSource (fragment, 1, &(const char *){
+R"(#version 120
+
+varying vec4 color;
+
+void main()
+{
+    vec4 color_scale = vec4 (1, 0, 1, 1);
+    gl_FragColor = color * color_scale;
+}
+)"}, NULL);</code>
+    <p>Creating a fragment shader is basically the same as a vertex shader, just with different source code. This fragment shader just zeroes out the green channel of the input color. After this, we compile the fragment shader just like the vertex shader.</p>
+
+    <code>    const auto program = glCreateProgram ();
+    glAttachShader (program, vertex);
+    glAttachShader (program, fragment);
+    glLinkProgram (program);
+    glGetShaderiv (program, GL_LINK_STATUS, &success);
+    if (!success) {
+        char buf[512];
+        glGetProgramInfoLog (program, sizeof (buf), NULL, buf);
+        printf ("OpenGL shader linking error: %s\n", buf);
+        return -1;
+    }</code>
+    <p>Here we create a full shader program which combines a vertex and fragment shader. The other shaders you can make are: tesselation, evaluation, geometry, and compute. All these shaders can be used in various combinations to make a complete shader program.</p>
+
+    <code>    glDeleteShader (vertex);
+    glDeleteShader (fragment);
+    glUseProgram (program);
+    glValidateProgram (program);
+    glGetProgramiv (program, GL_VALIDATE_STATUS, &success);
+    if (!success) {
+        char buf[512];
+        glGetProgramInfoLog (program, 512, NULL, buf);
+        printf ("OpenGL shader validation error [%s]", buf);
+        return -1;
+    }</code>
+    <p>Once the shaders are attached to the program, we can delete them. Then we "validate" the program, which verifies that the program is compatible with the current OpenGL state.</p>
+
+    <code>        glBegin (GL_TRIANGLES);
+            glColor3f (1, 0, 0);
+            glVertex3f (-1, -1, 0);
+            glColor3f (0, 1, 0);
+            glVertex3f (1, -1, 0);
+            glColor3f (0, 0, 1);
+            glVertex3f (0, 1, 0);
+        glEnd ();</code>
+    <p>This is the same RGB triangle as in the "Hello Triangle" OpenGL tutorial. However, because of the shaders, it will be vertically shortened and all the green is removed.</p>
+
+    <script src="/scripts/prev-next-step.js" path_next="/#oasis0" label_next="Back to the Path"></script>
+
+    <script src="/scripts/footer.js"></script>
+</body>
+
+</html>
