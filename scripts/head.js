@@ -6,6 +6,7 @@ document.currentScript.insertAdjacentHTML('beforebegin',`
 
 window.goatcounter = {
     endpoint: 'https://ultiman3rd.goatcounter.com/count',
+    path: function(p) { return location.host + p },
 };
 
 const gc = document.createElement('script');
