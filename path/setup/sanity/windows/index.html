@@ -10,22 +10,22 @@
 
     <h2>Sanity check on Windows</h2>
 
-    <p>Tutorials can be incredibly frustrating when the first few steps work, but halfway through, for some reason, it stops working on your machine! That's why you're now going to clone the Croaking Kero Game Framework repository (the source code to my game framework, which the Path is based upon) and build it from source! If this works on your machine, you can proceed with confidence, knowing that every step of the path will work for you - and if you run into any problems, you'll have a complete project to compare against.</p>
+    <p>Tutorials can be incredibly frustrating when the first few steps work, but halfway through, for some reason, it stops working on your machine! That's why you're now going to clone the NSMGEngineExample repository (a basic game using NSMGEngine, which the Path is based upon) and build it from source! If this works on your machine, you can proceed with confidence, knowing that every step of the path will work for you - and if you run into any problems, you'll have a complete project to compare against.</p>
 
     <p>Open a Powershell window and type the following commands (you can paste them into your Powershell with CTRL+Shift+V):</p>
 
 <code>mkdir goldenpath
 cd goldenpath
-git clone https://codeberg.org/UltimaN3rd/Croaking_Kero_Game_Framework.git ckgf
-cd ckgf
+git clone --recurse-submodules https://codeberg.org/UltimaN3rd/NSMGEngineExample.git nsmg
+cd nsmg
 mkdir build
 cd build
 cmake ..
 cd ..
 cmake --build build
-build/flappy.exe</code>
+build/NSMGExample.exe</code>
 
-    <p>A simple Flappy Bird game should launch, including a menu, saving/loading high score and configuration, sound, etc. The game example provided is simple, but you've just successfully built the whole game framework - which I've used to release commercial games on Steam.</p>
+    <p>A simple Flappy Bird game should launch, including a menu, saving/loading high score and configuration, sound, etc. The game example provided is simple, but you've just successfully built the whole game engine - which I've used to <a href="https://store.steampowered.com/app/2572310/" target="_blank">release commercial games on Steam.</a></p>
 
     <p>If you have problems, read the output of the failed command carefully. If you can't figure it out, search the <a href="/community.html">Community</a> for a solution to your specific issue.</p>
 
