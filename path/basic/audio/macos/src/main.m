@@ -32,7 +32,7 @@ static OSStatus SoundCallback (void *inRefCon, AudioUnitRenderActionFlags *ioAct
     return noErr;
 }
 
-OSStatus deviceChangedCallback(AudioObjectID inObjectID, UInt32 inNumberAddresses, const AudioObjectPropertyAddress inAddresses[], void* inClientData) {
+OSStatus DeviceChangedCallback(AudioObjectID inObjectID, UInt32 inNumberAddresses, const AudioObjectPropertyAddress inAddresses[], void* inClientData) {
     LOG ("Default output device changed.\n");
     restart_audio = true;
     return noErr;
@@ -88,8 +88,8 @@ int main () {
             .mScope = kAudioObjectPropertyScopeGlobal,
             .mElement = kAudioObjectPropertyElementMain
         };
-        DO_OR_LOG (AudioObjectAddPropertyListener (kAudioObjectSystemObject, &property_address, deviceChangedCallback, NULL), "Failed to add property listener for default device change");
-        defer { DO_OR_LOG (AudioObjectRemovePropertyListener (kAudioObjectSystemObject, &property_address, deviceChangedCallback, NULL), "Failed to remove property listener for default device change"); }
+        DO_OR_LOG (AudioObjectAddPropertyListener (kAudioObjectSystemObject, &property_address, DeviceChangedCallback, NULL), "Failed to add property listener for default device change");
+        defer { DO_OR_LOG (AudioObjectRemovePropertyListener (kAudioObjectSystemObject, &property_address, DeviceChangedCallback, NULL), "Failed to remove property listener for default device change"); }
 
         DO_OR_RETRY (AudioUnitInitialize(tone_unit), "Error initializing unit");
         defer { DO_OR_LOG (AudioUnitUninitialize(tone_unit), "Error uninitializing unit"); }

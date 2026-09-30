@@ -36,7 +36,7 @@
 
     <code>bool GLHasExtension (const char *const haystack, const char *const needle) {
     const char *e = haystack;
-    const auto len = strlen (needle);
+    const size_t len = strlen (needle);
     for (;;) {
         e = strstr (e, needle);
         if (e == NULL) return false;
@@ -47,26 +47,26 @@
 }</code>
     <p>This function searches for the given extension in an extension string. It's important to check that the found extension is followed by a space or NULL, because some extensions have the same name as another extension, with additional text added on, eg. GL_ARB_shadow and GL_ARB_shadow_ambient. On all of my systems, every extension in the string, including the last, is followed by a space, so I could just check for the extension followed by a space to eliminate the need to check the next character. But according to <a href="https://developer.download.nvidia.com/assets/gamedev/docs/extensions.pdf" target="_blank">this nVidia document, page 6</a>, the last extension may not have a space and may just be NULL-terminated.</p>
 
-    <code>    NSOpenGLPixelFormatAttribute glAttributes[] = {
+    <code>    NSOpenGLPixelFormatAttribute gl_attributes[] = {
         NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersionLegacy,
 
         [...]
 
-    const auto vertex_shader = glCreateShader (GL_VERTEX_SHADER);</code>
+    const GLuint vertex_shader = glCreateShader (GL_VERTEX_SHADER);</code>
     <p>glCreateShader was added in version 2.0. Since we've requested a legacy 2.1 context, we can just go right ahead and call functions included in that version.</p>
 
     <code>#include &lt;dlfcn.h&gt;
 
 [...]
 
-    const auto gldll = dlopen ("/System/Library/Frameworks/OpenGL.framework/OpenGL", RTLD_LAZY);</code>
+    void *gldll = dlopen ("/System/Library/Frameworks/OpenGL.framework/OpenGL", RTLD_LAZY);</code>
     <p>We used to be able to use NSLookupAndBindSymbol to find dynamic symbols, but Apple has deprecated it. Now, this is the standard way of loading OpenGL extension functions. dlfcn is the POSIX library used for dynamic linking. Here we open the OpenGL dynamic library, from which we will be retrieving GL extension functions.</p>
 
     <code>    if (GLHasExtension (gl_extensions, "GL_ARB_vertex_buffer_object")) {
         do {
             typedef void (*glGenBuffersARB_t) (GLsizei n, GLuint *buffers);
 
-            const auto glGenBuffersARB = (glGenBuffersARB_t)dlsym (gldll, "glGenBuffersARB");
+            const glGenBuffersARB_t glGenBuffersARB = (glGenBuffersARB_t)dlsym (gldll, "glGenBuffersARB");
             if (glGenBuffersARB == NULL) {
                 puts ("Failed to retrieve glGenBuffersARB function pointer");
                 break;

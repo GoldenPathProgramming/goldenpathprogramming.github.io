@@ -2,53 +2,53 @@
 
 static bool quit = false;
 
-@interface AppDelegate : NSObject<NSApplicationDelegate>
--(NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication*)sender;
-@end
-@implementation AppDelegate
+@interface Delegate : NSObject<NSApplicationDelegate, NSWindowDelegate> @end
+@implementation Delegate
 -(NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication*)sender {
 	quit = true;
 	return NSTerminateCancel;
 }
-@end
-
-@interface WindowDelegate : NSObject<NSWindowDelegate>
--(void)windowWillClose:(NSNotification*)notification;
-@end
-@implementation WindowDelegate
 -(void)windowWillClose:(NSNotification *)notification {
 	quit = true;
 }
 @end
 
 int main () {
-    id app = [NSApplication sharedApplication];
-    [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
+    NSApplication *app = [NSApplication sharedApplication];
+    [app setActivationPolicy:NSApplicationActivationPolicyRegular];
 
-    id menuBar = [NSMenu new];
-    id menuItemApp = [NSMenuItem new];
-    [menuBar addItem:menuItemApp];
-    [NSApp setMainMenu:menuBar];
+    NSMenu *menu_bar = [NSMenu new];
+    NSMenuItem *menu_item_app = [NSMenuItem new];
+    [menu_bar addItem:menu_item_app];
+    [app setMainMenu:menu_bar];
 
-    id appMenu = [NSMenu new];
-    [appMenu addItem:[[NSMenuItem alloc] initWithTitle:[@"Quit " stringByAppendingString:[[NSProcessInfo processInfo] processName]] action:@selector(terminate:) keyEquivalent:@"q"]];
-    [menuItemApp setSubmenu:appMenu];
+    NSMenu *app_menu = [NSMenu new];
+    [app_menu addItem:[[NSMenuItem alloc] initWithTitle:[@"Quit " stringByAppendingString:[[NSProcessInfo processInfo] processName]] action:@selector(terminate:) keyEquivalent:@"q"]];
+    [menu_item_app setSubmenu:app_menu];
 
-    id window = [[NSWindow alloc] initWithContentRect:NSMakeRect(0,0,640,480) styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable backing:NSBackingStoreBuffered defer:YES];
+    NSWindow *window = [[NSWindow alloc] initWithContentRect:NSMakeRect(0,0,640,480) styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable backing:NSBackingStoreBuffered defer:YES];
     [window setReleasedWhenClosed:NO];
     [window setTitle:@"Golden Path"];
     [window setFrameAutosaveName:[window title]];
     [window makeKeyAndOrderFront:window];
     
-    [NSApp setDelegate:[AppDelegate new]];
-    [window setDelegate:[WindowDelegate new]];
+    Delegate *delegate = [Delegate new];
+    [app setDelegate:delegate];
+    [window setDelegate:delegate];
 
-    [NSApp activate];
+    if (@available(macOS 14.0, *)) [(id)app activate];
+    else [app activateIgnoringOtherApps:true];
 
     while (!quit) {
-        NSEvent *e = [NSApp nextEventMatchingMask:NSEventMaskAny untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:YES];
-        if (e) [NSApp sendEvent:e];
-        [NSApp updateWindows];
+        @autoreleasepool {
+            for (;;) {
+                NSEvent *e = [app nextEventMatchingMask:NSEventMaskAny untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:YES];
+                if (!e) break;
+                [app sendEvent:e];
+            }
+            [app updateWindows];
+        }
+        usleep (5000);
     }
 
     return 0;

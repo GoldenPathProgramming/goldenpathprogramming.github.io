@@ -11,198 +11,207 @@ enum { kVK_ISO_Section = 0x0A };
 enum { kVK_JIS_Yen = 0x5D, kVK_JIS_Underscore = 0x5E, kVK_JIS_KeypadComma = 0x5F, kVK_JIS_Eisu = 0x66, kVK_JIS_Kana = 0x68 };
 
 static bool quit = false;
-static id window;
-static bool live_resizing = false;
+static NSWindow *window;
+static NSApplication *app;
 
-enum { OSXUserEvent_WindowClose, OSXUserEvent_WindowResize, OSXUserEvent_LostFocus, OSXUserEvent_EnterFullscreen, OSXUserEvent_ExitFullscreen, };
+enum { OSXUserEvent_WindowClose, OSXUserEvent_WindowResize, OSXUserEvent_LostFocus, };
 
-@interface AppDelegate : NSObject<NSApplicationDelegate>
--(NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication*)sender;
-@end
-@implementation AppDelegate
--(NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication*)sender {
-	NSEvent *event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:(NSPoint){0,0} modifierFlags:0 timestamp:[[NSProcessInfo processInfo] systemUptime] windowNumber:[window windowNumber] context:nil subtype:OSXUserEvent_WindowClose data1:0 data2:0];
-	[NSApp postEvent:event atStart:true];
-	return NSTerminateCancel;
+@interface Delegate : NSObject<NSApplicationDelegate, NSWindowDelegate> @end
+@implementation Delegate {
+    bool live_resizing;
 }
-@end
-
-#define WINDOW_CONTENT_SIZE [[window contentView] convertRectToBacking:[[window contentView] bounds]].size
-
-@interface WindowDelegate : NSObject<NSWindowDelegate>
--(void)windowWillClose:(NSNotification*)notification;
--(void)windowDidResignKey:(NSNotification*)notification;
--(void)windowDidResize:(NSNotification *)notification;
--(void)windowWillStartLiveResize:(NSNotification *)notification;
--(void)windowDidEndLiveResize:(NSNotification *)notification;
-@end
-@implementation WindowDelegate
+-(NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication*)sender {
+    NSEvent *event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:(NSPoint){0,0} modifierFlags:0 timestamp:[[NSProcessInfo processInfo] systemUptime] windowNumber:[window windowNumber] context:nil subtype:OSXUserEvent_WindowClose data1:0 data2:0];
+    [app postEvent:event atStart:true];
+    return NSTerminateCancel;
+}
 -(void)windowWillClose:(NSNotification *)notification {
-	NSEvent *event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:(NSPoint){0,0} modifierFlags:0 timestamp:[[NSProcessInfo processInfo] systemUptime] windowNumber:[window windowNumber] context:nil subtype:OSXUserEvent_WindowClose data1:0 data2:0];
-	[NSApp postEvent:event atStart:true];
+    NSEvent *event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:(NSPoint){0,0} modifierFlags:0 timestamp:[[NSProcessInfo processInfo] systemUptime] windowNumber:[window windowNumber] context:nil subtype:OSXUserEvent_WindowClose data1:0 data2:0];
+    [app postEvent:event atStart:true];
 }
 -(void)windowDidResignKey:(NSNotification*)notification {
-	NSEvent *event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:(NSPoint){0,0} modifierFlags:0 timestamp:[[NSProcessInfo processInfo] systemUptime] windowNumber:[window windowNumber] context:nil subtype:OSXUserEvent_LostFocus data1:0 data2:0];
-	[NSApp postEvent:event atStart:false];
+    NSEvent *event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:(NSPoint){0,0} modifierFlags:0 timestamp:[[NSProcessInfo processInfo] systemUptime] windowNumber:[window windowNumber] context:nil subtype:OSXUserEvent_LostFocus data1:0 data2:0];
+    [app postEvent:event atStart:false];
 }
 -(void)windowDidResize:(NSNotification *)notification {
-	if (live_resizing) return;
-	NSSize size = WINDOW_CONTENT_SIZE;
-	NSEvent *event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:(NSPoint){0,0} modifierFlags:0 timestamp:[[NSProcessInfo processInfo] systemUptime] windowNumber:[window windowNumber] context:nil subtype:OSXUserEvent_WindowResize data1:size.width data2:size.height];
-	[NSApp postEvent:event atStart:false];
+    if (live_resizing) return;
+    [self SendResizeEvent];
 }
 -(void)windowWillStartLiveResize:(NSNotification *)notification {
-	live_resizing = true;
+    live_resizing = true;
 }
 -(void)windowDidEndLiveResize:(NSNotification *)notification {
-	live_resizing = false;
-	NSSize size = WINDOW_CONTENT_SIZE;
-	NSEvent *event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:(NSPoint){0,0} modifierFlags:0 timestamp:[[NSProcessInfo processInfo] systemUptime] windowNumber:[window windowNumber] context:nil subtype:OSXUserEvent_WindowResize data1:size.width data2:size.height];
-	[NSApp postEvent:event atStart:false];
+    live_resizing = false;
+    [self SendResizeEvent];
 }
-- (void)mouseEntered:(NSEvent *)event {
+-(void)SendResizeEvent {
+    NSSize size = [[window contentView] convertRectToBacking:[[window contentView] bounds]].size;
+    NSEvent *event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:(NSPoint){0,0} modifierFlags:0 timestamp:[[NSProcessInfo processInfo] systemUptime] windowNumber:[window windowNumber] context:nil subtype:OSXUserEvent_WindowResize data1:size.width data2:size.height];
+    [app postEvent:event atStart:false];
+}
+-(void)mouseEntered:(NSEvent *)event {
     printf("Mouse entered content view tracking area\n");
 }
-- (void)mouseExited:(NSEvent *)event {
+-(void)mouseExited:(NSEvent *)event {
     printf("Mouse exited content view tracking area\n");
+}
+-(void)mouseMoved:(NSEvent *)event {
+    NSPoint p = [[window contentView] convertPointToBacking:[event locationInWindow]];
+    printf("Mouse moved inside content view tracking area: %.1f %.1f\n", p.x, p.y);
 }
 @end
 
 const char *KeycodeStr (uint8_t code);
 
 int main () {
-    id app = [NSApplication sharedApplication];
-    [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
+    app = [NSApplication sharedApplication];
+    [app setActivationPolicy:NSApplicationActivationPolicyRegular];
 
-    id menuBar = [NSMenu new];
-    id menuItemApp = [NSMenuItem new];
-    [menuBar addItem:menuItemApp];
-    [NSApp setMainMenu:menuBar];
+    NSMenu *menu_bar = [NSMenu new];
+    NSMenuItem *menu_item_app = [NSMenuItem new];
+    [menu_bar addItem:menu_item_app];
+    [app setMainMenu:menu_bar];
 
-    id appMenu = [NSMenu new];
-    [appMenu addItem:[[NSMenuItem alloc] initWithTitle:[@"Quit " stringByAppendingString:[[NSProcessInfo processInfo] processName]] action:@selector(terminate:) keyEquivalent:@"q"]];
-    [menuItemApp setSubmenu:appMenu];
+    NSMenu *app_menu = [NSMenu new];
+    [app_menu addItem:[[NSMenuItem alloc] initWithTitle:[@"Quit " stringByAppendingString:[[NSProcessInfo processInfo] processName]] action:@selector(terminate:) keyEquivalent:@"q"]];
+    [menu_item_app setSubmenu:app_menu];
 
     window = [[NSWindow alloc] initWithContentRect:NSMakeRect(0,0,640,480) styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable backing:NSBackingStoreBuffered defer:YES];
     [window setReleasedWhenClosed:NO];
     [window setTitle:@"Golden Path"];
     [window setFrameAutosaveName:[window title]];
     [window makeKeyAndOrderFront:window];
+    [window setAcceptsMouseMovedEvents:YES];
     
-    [NSApp setDelegate:[AppDelegate new]];
-    [window setDelegate:[WindowDelegate new]];
+    Delegate *delegate = [Delegate new];
+    [app setDelegate:delegate];
+    [window setDelegate:delegate];
 
     NSView *content_view = [window contentView];
-    NSTrackingArea *tracking_area = [[NSTrackingArea alloc] initWithRect:content_view.bounds options:NSTrackingMouseEnteredAndExited | NSTrackingActiveAlways | NSTrackingInVisibleRect | NSTrackingEnabledDuringMouseDrag owner:[window delegate] userInfo:nil];
+    NSTrackingArea *tracking_area = [[NSTrackingArea alloc] initWithRect:content_view.bounds options:NSTrackingMouseEnteredAndExited | NSTrackingMouseMoved | NSTrackingActiveAlways | NSTrackingInVisibleRect | NSTrackingEnabledDuringMouseDrag owner:[window delegate] userInfo:nil];
     [content_view addTrackingArea:tracking_area];
 
-    [NSApp activate];
+    if (@available(macOS 14.0, *)) [(id)app activate];
+    else [app activateIgnoringOtherApps:true];
 
     while (!quit) {
-        NSEvent *e = [NSApp nextEventMatchingMask:NSEventMaskAny untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:YES];
+        @autoreleasepool {
+            for (;;) {
+                NSEvent *e = [app nextEventMatchingMask:NSEventMaskAny untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:YES];
+                if (!e) break;
 
-        bool pass_event_along = true;
-        bool pressed = true; // Used to group together key press/release events into the same code
-        if (e) {
-            switch ([e type]) {
-                case NSEventTypeLeftMouseUp:
-                case NSEventTypeRightMouseUp:
-                case NSEventTypeOtherMouseUp:
-                    pressed = false;
-                case NSEventTypeLeftMouseDown:
-                case NSEventTypeRightMouseDown:
-                case NSEventTypeOtherMouseDown: {
-                    NSPoint ep = [[window contentView] convertPointToBacking:[e locationInWindow]];
-                    static const char *mouse_button_name[5] = {
-                        "Left", "Right", "Middle", "X1", "X2"
-                    };
-                    const char *button_name = "Unknown";
-                    const int button_number = [e buttonNumber];
-                    if (button_number < 5) button_name = mouse_button_name[button_number];
-                    printf ("Mouse button %d(%s) %s at %f, %f\n", button_number, button_name, pressed ? "pressed" : "released", ep.x, ep.y);
-                } break;
-
-                case NSEventTypeMouseMoved:
-                case NSEventTypeLeftMouseDragged:
-                case NSEventTypeRightMouseDragged:
-                case NSEventTypeOtherMouseDragged: {
-                    NSPoint p = [[window contentView]
-                    convertPointToBacking:[e locationInWindow]];
-                    printf("Mouse moved: %.1f %.1f\n", p.x, p.y);
-                } break;
-
-                case NSEventTypeScrollWheel: {
-                    if ([e hasPreciseScrollingDeltas]) {
-                        const NSTimeInterval time = [e timestamp];
-                        const float dy = [e scrollingDeltaY];
-                        printf ("Precise scroll %f @ %f (%f)\n", dy, time, [e deltaY]);
-                    }
-                    else {
-                        const float dy = [e deltaY];
-                        printf ("Simple scroll %f\n", dy);
-                    }
-                } break;
-
-                case NSEventTypeKeyDown:
-                    pressed = false;
-                case NSEventTypeKeyUp: {
-                    pass_event_along = false;
-                    if ([e isARepeat]) {
-                        printf ("Key repeat %s\n", KeycodeStr([e keyCode]));
-                        break;
-                    }
-                    printf ("Key %s %s\n", KeycodeStr((uint8_t)[e keyCode]), pressed ? "pressed" : "released");
-                } break;
-
-                case NSEventTypeFlagsChanged: {
-                    typedef union {
-                        struct {
-                            uint8_t alpha_shift:1;
-                            uint8_t shift:1;
-                            uint8_t control:1;
-                            uint8_t alternate:1;
-                            uint8_t command:1;
-                            uint8_t numeric_pad:1;
-                            uint8_t help:1;
-                            uint8_t function:1;
+                bool pass_event_along = true;
+                bool pressed = true; // Used to group together key press/release events into the same code
+                switch ([e type]) {
+                    case NSEventTypeLeftMouseUp:
+                    case NSEventTypeRightMouseUp:
+                    case NSEventTypeOtherMouseUp:
+                        pressed = false;
+                    case NSEventTypeLeftMouseDown:
+                    case NSEventTypeRightMouseDown:
+                    case NSEventTypeOtherMouseDown: {
+                        NSPoint ep = [[window contentView] convertPointToBacking:[e locationInWindow]];
+                        static const char *mouse_button_name[5] = {
+                            "Left", "Right", "Middle", "X1", "X2"
                         };
-                        uint8_t mask;
-                    } osx_event_modifiers_t;
-                    static osx_event_modifiers_t mods_prev = {};
-                    osx_event_modifiers_t mods = {.mask = ([e modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask) >> 16};
-                    if (mods.alpha_shift ^ mods_prev.alpha_shift) printf ("Key %s Alpha Shift\n", mods.alpha_shift ? "pressed" : "released");
-                    if (mods.shift ^ mods_prev.shift) printf ("Key %s Shift\n", mods.shift ? "pressed" : "released");
-                    if (mods.control ^ mods_prev.control) printf ("Key %s Ctrl\n", mods.control ? "pressed" : "released");
-                    if (mods.alternate ^ mods_prev.alternate) printf ("Key %s Alt\n", mods.alternate ? "pressed" : "released");
-                    if (mods.command ^ mods_prev.command) printf ("Key %s Command\n", mods.alpha_shift ? "pressed" : "released");
-                    if (mods.numeric_pad ^ mods_prev.numeric_pad) printf ("Key %s NumLock\n", mods.numeric_pad ? "pressed" : "released");
-                    if (mods.help ^ mods_prev.help) printf ("Key %s Help\n", mods.help ? "pressed" : "released");
-                    if (mods.function ^ mods_prev.function) printf ("Key %s Function\n", mods.function ? "pressed" : "released");
-                    mods_prev = mods;
-                } break;
+                        const char *button_name = "Unknown";
+                        const int button_number = [e buttonNumber];
+                        if (button_number < 5) button_name = mouse_button_name[button_number];
+                        printf ("Mouse button %d(%s) %s at %f, %f\n", button_number, button_name, pressed ? "pressed" : "released", ep.x, ep.y);
+                    } break;
 
-                case NSEventTypeApplicationDefined: {
-                    switch ([e subtype]) {
-                        case OSXUserEvent_WindowClose: {
-                            printf ("Window close\n");
-                            quit = true;
-                        } break;
+                    case NSEventTypeMouseMoved:
+                    case NSEventTypeLeftMouseDragged:
+                    case NSEventTypeRightMouseDragged:
+                    case NSEventTypeOtherMouseDragged: {
+                        if (e.window == nil) {
+                            // NOTE: Check this on multi-monitor! Is frame.origin relative to the monitor it's on, or the same as [e locationInWindow] when window is nil?
+                            NSRect frame = [window frame];
+                            NSPoint p = [e locationInWindow];
+                            p.x -= frame.origin.x;
+                            p.y -= frame.origin.y;
+                            p = [[window contentView] convertPointToBacking:p];
+                            printf ("Mouse moved outside window: %.1f %.1f\n", p.x, p.y);
+                        }
+                        else {
+                            NSPoint p = [[window contentView] convertPointToBacking:[e locationInWindow]];
+                            printf("Mouse moved: %.1f %.1f\n", p.x, p.y);
+                        }
+                    } break;
 
-                        case OSXUserEvent_WindowResize: printf ("Resize %d, %d\n", (int)[e data1], (int)[e data2]); break;
-                        case OSXUserEvent_LostFocus: puts ("Focus Out"); break;
-                        case OSXUserEvent_EnterFullscreen: puts ("Fullscreen"); break;
-                        case OSXUserEvent_ExitFullscreen: puts ("Exit fullscreen"); break;
-                        default: puts ("Unknown user event?"); break;
-                    }
-                } break;
-                
-                default: break;
+                    case NSEventTypeScrollWheel: {
+                        if ([e hasPreciseScrollingDeltas]) {
+                            const NSTimeInterval time = [e timestamp];
+                            const float dy = [e scrollingDeltaY];
+                            printf ("Precise scroll %f @ %f (%f)\n", dy, time, [e deltaY]);
+                        }
+                        else {
+                            const float dy = [e deltaY];
+                            printf ("Simple scroll %f\n", dy);
+                        }
+                    } break;
+
+                    case NSEventTypeKeyDown:
+                        pressed = false;
+                    case NSEventTypeKeyUp: {
+                        pass_event_along = false;
+                        if ([e isARepeat]) {
+                            printf ("Key repeat %s\n", KeycodeStr([e keyCode]));
+                            break;
+                        }
+                        printf ("Key %s %s\n", KeycodeStr((uint8_t)[e keyCode]), pressed ? "pressed" : "released");
+                    } break;
+
+                    case NSEventTypeFlagsChanged: {
+                        typedef union {
+                            struct {
+                                uint8_t alpha_shift:1;
+                                uint8_t shift:1;
+                                uint8_t control:1;
+                                uint8_t alternate:1;
+                                uint8_t command:1;
+                                uint8_t numeric_pad:1;
+                                uint8_t help:1;
+                                uint8_t function:1;
+                            };
+                            uint8_t mask;
+                        } osx_event_modifiers_t;
+                        static osx_event_modifiers_t mods_prev = {};
+                        osx_event_modifiers_t mods = {.mask = ([e modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask) >> 16};
+                        if (mods.alpha_shift ^ mods_prev.alpha_shift) printf ("Key %s Alpha Shift\n", mods.alpha_shift ? "pressed" : "released");
+                        if (mods.shift ^ mods_prev.shift) printf ("Key %s Shift\n", mods.shift ? "pressed" : "released");
+                        if (mods.control ^ mods_prev.control) printf ("Key %s Ctrl\n", mods.control ? "pressed" : "released");
+                        if (mods.alternate ^ mods_prev.alternate) printf ("Key %s Alt\n", mods.alternate ? "pressed" : "released");
+                        if (mods.command ^ mods_prev.command) printf ("Key %s Command\n", mods.command ? "pressed" : "released");
+                        if (mods.numeric_pad ^ mods_prev.numeric_pad) printf ("Key %s NumLock\n", mods.numeric_pad ? "pressed" : "released");
+                        if (mods.help ^ mods_prev.help) printf ("Key %s Help\n", mods.help ? "pressed" : "released");
+                        if (mods.function ^ mods_prev.function) printf ("Key %s Function\n", mods.function ? "pressed" : "released");
+                        mods_prev = mods;
+                    } break;
+
+                    case NSEventTypeApplicationDefined: {
+                        switch ([e subtype]) {
+                            case OSXUserEvent_WindowClose: {
+                                printf ("Window close\n");
+                                quit = true;
+                            } break;
+
+                            case OSXUserEvent_WindowResize: printf ("Resize %d, %d\n", (int)[e data1], (int)[e data2]); break;
+
+                            case OSXUserEvent_LostFocus: puts ("Focus Out"); break;
+
+                            default: puts ("Unknown user event?"); break;
+                        }
+                    } break;
+                    
+                    default: break;
+                }
+
+                if (pass_event_along) [app sendEvent:e];
             }
-
-            if (pass_event_along) [NSApp sendEvent:e];
+            [app updateWindows];
+            usleep(5000);
         }
-
-        [NSApp updateWindows];
     }
 
     return 0;

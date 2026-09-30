@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/scripts/head.js"></script>
+</head>
+
+<body>
+    <script src="/scripts/header.js"></script>
+
+    <h2>Toggling fullscreen with Cocoa on MacOS</h2>
+
+    <h3 style="text-align:left;">References</h3>
+    <ul>
+        <li><a href="https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/ProgrammingWithObjectiveC/Introduction/Introduction.html" target="_blank">Objective-C Programming Guide</a></li>
+        <li><a href="https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/CocoaFundamentals/Introduction/Introduction.html" target="_blank">Cocoa Fundamentals</a></li>
+        <li><a href="https://developer.apple.com/documentation/appkit?language=objc" target="_blank">Obj-C/Cocoa API Reference</a></li>
+        <li><a href="https://developer.apple.com/library/archive/documentation/General/Conceptual/MOSXAppProgrammingGuide/FullScreenApp/FullScreenApp.html" target="_blank">Implementing the Full-Screen Experience - Mac App Programming Guide</a></li>
+        <li><a href="https://developer.apple.com/documentation/appkit/nswindow/stylemask-swift.struct" target="_blank">NSWindow.StyleMask</a></li>
+        <li><a href="https://developer.apple.com/documentation/appkit/nswindow/converttoscreen(_:)?changes=la_5&language=objc" target="_blank">convertRectToScreen</a></li>
+        <li><a href="https://developer.apple.com/documentation/appkit/nsapplication/presentationoptions-swift.struct" target="_blank">NSApplication.PresentationOptions</a></li>
+        <li><a href="https://developer.apple.com/documentation/appkit/nsapplication/currentsystempresentationoptions" target="_blank">currentSystemPresentationOptions</a></li>
+        <li><a href="https://developer.apple.com/documentation/appkit/nsview/enterfullscreenmode(_:withoptions:)" target="_blank">enterFullScreenMode (used for individual windows)</a></li>
+        <li><a href="https://developer.apple.com/documentation/appkit/nsview/exitfullscreenmode(options:)" target="_blank">exitFullScreenMode (used for individual windows)</a></li>
+        <li><a href="https://developer.apple.com/documentation/appkit/nsview/isinfullscreenmode" target="_blank">isInFullScreenMode (used for individual windows)</a></li>
+        <li><a href="https://developer.apple.com/documentation/appkit/nswindow/togglefullscreen(_:)" target="_blank">toggleFullScreen</a></li>
+    </ul>
+
+    <p>When running the provided source, press [b] to toggle borderless fullscreen, [Enter] to toggle exclusive fullscreen, and [Escape] to close.</p>
+
+    <script src="/scripts/embed-code.js" data-src="src/main.m"></script>
+    <p>Build with:</p>
+    <code>clang main.m -framework Cocoa</code>
+    <hr/>
+
+    <code>static void ToggleBorderlessWindow () {
+    static struct {
+        NSWindowStyleMask style_mask;
+        NSRect frame;
+        NSApplicationPresentationOptions presentation_options;
+    } window_data;
+
+    if (IsBorderlessWindow()) {
+        [app setPresentationOptions:window_data.presentation_options];
+        [window setFrame: window_data.frame display: TRUE];
+        [window setStyleMask: window_data.style_mask];
+    }
+    else {
+        window_data.style_mask = [window styleMask];
+        window_data.frame = [window convertRectToScreen:[[window contentView] frame]];
+        window_data.presentation_options = [app presentationOptions];
+
+        [app setPresentationOptions: NSApplicationPresentationHideMenuBar | NSApplicationPresentationHideDock];
+        [window setStyleMask: NSWindowStyleMaskBorderless];
+        [window setFrame: [[window screen] frame] display: TRUE];
+    }
+}</code>
+    <p>The three things we change when entering borderless fullscreen mode are: presentation options, style mask, and frame (window size/position). Any time we enter borderless fullscreen, we capture the current state of the window, then: set the menu bar and dock to hide, set the window style to borderless, and set the window frame to the frame of the screen which the window is most on.</p>
+    <p>To exit borderless fullscreen, we just set these three things back to what they were before we entered the mode.</p>
+    <p>PresentationOptions tell MacOS some things about how to present our application. They only apply to our program, so, if the user ⌘-tabs, they menu bar and dock will switch to their system settings.</p>
+    <p>These settings must be switch in the shown order to work correctly - try switch the order to see why!</p>
+    <p>You'll notice that switching into borderless fullscreen takes about half a second. This is caused by the call to setStyleMask, and I haven't found a way to speed it up. Let me know if you figure it out!</p>
+
+    <code>static bool IsBorderlessWindow () {
+    return [window styleMask] == NSWindowStyleMaskBorderless;
+}</code>
+    <p>When checking if we're already borderless, I only check the window style. You might also check the presentation options and frame, but if the user has somehow overridden these with an external tool, I think treating the window as if it were still in borderless fullscreen is the best behaviour.</p>
+
+    <hr/>
+
+    <p>MacOS also has an exclusive fullscreen mode. I don't recommend you use this, but if you need it, it's very easy:</p>
+
+    <code>static bool IsFullscreen () {
+    return [NSApp currentSystemPresentationOptions] & NSApplicationPresentationFullScreen;
+}</code>
+
+    <code>static void ToggleFullscreen () {
+    [window toggleFullScreen:nil];
+}</code>
+
+    <p>For more information about these and related functions, check the Apple documentation linked in the references section.</p>
+
+    <script src="/scripts/prev-next-step.js" path_next="/#oasis1" label_next="Back to the Path"></script>
+
+    <script src="/scripts/footer.js"></script>
+</body>
+
+</html>

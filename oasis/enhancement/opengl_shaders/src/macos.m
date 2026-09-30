@@ -5,81 +5,64 @@
 #include <OpenGL/glu.h>
 
 static bool quit = false;
-static id window;
-enum {OSXUserEvent_WindowResize};
-static bool live_resizing = false;
 static NSOpenGLContext *gl_context;
+static NSApplication *app;
+static NSWindow *window;
 
-#define WINDOW_CONTENT_SIZE [[window contentView] convertRectToBacking:[[window contentView] bounds]].size
-
-static void OnResize () {
-    const NSSize size = WINDOW_CONTENT_SIZE;
-    glViewport (0, 0, size.width, size.height);
-    glMatrixMode (GL_PROJECTION);
-    glLoadIdentity ();
-    [gl_context update];
+@interface Delegate : NSObject<NSApplicationDelegate, NSWindowDelegate> @end
+@implementation Delegate {
+    bool live_resizing;
 }
-
-@interface AppDelegate : NSObject<NSApplicationDelegate>
--(NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication*)sender;
-@end
-@implementation AppDelegate
 -(NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication*)sender {
     quit = true;
     return NSTerminateCancel;
 }
-@end
-
-@interface WindowDelegate : NSObject<NSWindowDelegate>
--(void)windowWillClose:(NSNotification*)notification;
--(void)windowDidResize:(NSNotification *)notification;
--(void)windowWillStartLiveResize:(NSNotification *)notification;
--(void)windowDidEndLiveResize:(NSNotification *)notification;
-@end
-@implementation WindowDelegate
--(void)windowWillClose:(NSNotification *)notification {
-    quit = true;
-}
+-(void)windowWillClose:(NSNotification*)notification { quit = true; }
 -(void)windowDidResize:(NSNotification *)notification {
     if (live_resizing) return;
-    NSSize size = WINDOW_CONTENT_SIZE;
-    NSEvent *event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:(NSPoint){0,0} modifierFlags:0 timestamp:[[NSProcessInfo processInfo] systemUptime] windowNumber:[window windowNumber] context:nil subtype:OSXUserEvent_WindowResize data1:size.width data2:size.height];
-    [NSApp postEvent:event atStart:false];
+    [self Resize];
 }
 -(void)windowWillStartLiveResize:(NSNotification *)notification {
 	live_resizing = true;
 }
 -(void)windowDidEndLiveResize:(NSNotification *)notification {
     live_resizing = false;
-    NSSize size = WINDOW_CONTENT_SIZE;
-    NSEvent *event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:(NSPoint){0,0} modifierFlags:0 timestamp:[[NSProcessInfo processInfo] systemUptime] windowNumber:[window windowNumber] context:nil subtype:OSXUserEvent_WindowResize data1:size.width data2:size.height];
-    [NSApp postEvent:event atStart:false];
+    [self Resize];
+}
+-(void)Resize {
+    NSSize size = [[window contentView] convertRectToBacking:[[window contentView] bounds]].size;
+    glViewport (0, 0, size.width, size.height);
+    glMatrixMode (GL_PROJECTION);
+    glLoadIdentity ();
+    [gl_context update];
 }
 @end
 
 int main () {
-    id app = [NSApplication sharedApplication];
-    [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
+    app = [NSApplication sharedApplication];
+    [app setActivationPolicy:NSApplicationActivationPolicyRegular];
 
-    id menuBar = [NSMenu new];
-    id menuItemApp = [NSMenuItem new];
-    [menuBar addItem:menuItemApp];
-    [NSApp setMainMenu:menuBar];
+    NSMenu *menu_bar = [NSMenu new];
+    NSMenuItem *menu_item_app = [NSMenuItem new];
+    [menu_bar addItem:menu_item_app];
+    [app setMainMenu:menu_bar];
 
-    id appMenu = [NSMenu new];
-    [appMenu addItem:[[NSMenuItem alloc] initWithTitle:[@"Quit " stringByAppendingString:[[NSProcessInfo processInfo] processName]] action:@selector(terminate:) keyEquivalent:@"q"]];
-    [menuItemApp setSubmenu:appMenu];
+    NSMenu *app_menu = [NSMenu new];
+    [app_menu addItem:[[NSMenuItem alloc] initWithTitle:[@"Quit " stringByAppendingString:[[NSProcessInfo processInfo] processName]] action:@selector(terminate:) keyEquivalent:@"q"]];
+    [menu_item_app setSubmenu:app_menu];
 
     window = [[NSWindow alloc] initWithContentRect:NSMakeRect(0,0,640,480) styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable backing:NSBackingStoreBuffered defer:YES];
     [window setReleasedWhenClosed:NO];
     [window setTitle:@"Golden Path"];
     [window setFrameAutosaveName:[window title]];
-    [window makeKeyAndOrderFront:window];
     
-    [NSApp setDelegate:[AppDelegate new]];
-    [window setDelegate:[WindowDelegate new]];
+    Delegate *delegate = [Delegate new];
+    [app setDelegate:delegate];
+    [window setDelegate:delegate];
+    
+    [window makeKeyAndOrderFront:window];
 
-    NSOpenGLPixelFormatAttribute glAttributes[] = {
+    NSOpenGLPixelFormatAttribute gl_attributes[] = {
         NSOpenGLPFAColorSize, 24,
         NSOpenGLPFAAlphaSize, 8,
         NSOpenGLPFAClosestPolicy,
@@ -91,8 +74,8 @@ int main () {
         NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersionLegacy,
         0,
     };
-    NSOpenGLPixelFormat *pixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:glAttributes];
-    gl_context = [[NSOpenGLContext alloc] initWithFormat:pixelFormat shareContext:nil];
+    NSOpenGLPixelFormat *pixel_format = [[NSOpenGLPixelFormat alloc] initWithAttributes:gl_attributes];
+    gl_context = [[NSOpenGLContext alloc] initWithFormat:pixel_format shareContext:nil];
     #pragma clang diagnostic push
     #pragma clang diagnostic ignored "-Wdeprecated-declarations"
     [gl_context setView:[window contentView]];
@@ -101,12 +84,14 @@ int main () {
 
     printf ("GL context version: %s\n", glGetString (GL_VERSION));
 
-    [NSApp activate];
+    if (@available(macOS 14.0, *)) [(id)app activate];
+    else [app activateIgnoringOtherApps:true];
 
-    OnResize ();
+    [delegate Resize];
+
     glClearColor (0, 0, 0, 0);
 
-    const auto vertex = glCreateShader (GL_VERTEX_SHADER);
+    const GLuint vertex = glCreateShader (GL_VERTEX_SHADER);
     glShaderSource (vertex, 1, &(const char*){
 R"(#version 120
 
@@ -129,7 +114,7 @@ void main()
         return -1;
     }
 
-    const auto fragment = glCreateShader (GL_FRAGMENT_SHADER);
+    const GLuint fragment = glCreateShader (GL_FRAGMENT_SHADER);
     glShaderSource (fragment, 1, &(const char *){
 R"(#version 120
 
@@ -151,7 +136,7 @@ void main()
         return -1;
     }
 
-    const auto program = glCreateProgram ();
+    const GLuint program = glCreateProgram ();
     glAttachShader (program, vertex);
     glAttachShader (program, fragment);
     glLinkProgram (program);
@@ -176,29 +161,27 @@ void main()
     }
 
     while (!quit) {
-        NSEvent *e = [NSApp nextEventMatchingMask:NSEventMaskAny untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:YES];
-        if (e) {
-            if (e.type == NSEventTypeApplicationDefined) {
-                if (e.subtype == OSXUserEvent_WindowResize) {
-                    OnResize();
-                }
+        @autoreleasepool {
+            for (;;) {
+                NSEvent *e = [app nextEventMatchingMask:NSEventMaskAny untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:YES];
+                if (!e) break;
+                [app sendEvent:e];
             }
-            [NSApp sendEvent:e];
+            [app updateWindows];
+
+            glClear (GL_COLOR_BUFFER_BIT);
+
+            glBegin (GL_TRIANGLES);
+                glColor3f (1, 0, 0);
+                glVertex3f (-1, -1, 0);
+                glColor3f (0, 1, 0);
+                glVertex3f (1, -1, 0);
+                glColor3f (0, 0, 1);
+                glVertex3f (0, 1, 0);
+            glEnd ();
+
+            [gl_context flushBuffer];
         }
-        [NSApp updateWindows];
-
-        glClear (GL_COLOR_BUFFER_BIT);
-
-        glBegin (GL_TRIANGLES);
-            glColor3f (1, 0, 0);
-            glVertex3f (-1, -1, 0);
-            glColor3f (0, 1, 0);
-            glVertex3f (1, -1, 0);
-            glColor3f (0, 0, 1);
-            glVertex3f (0, 1, 0);
-        glEnd ();
-
-        [gl_context flushBuffer];
     }
 
     return 0;

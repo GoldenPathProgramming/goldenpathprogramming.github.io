@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/scripts/head.js"></script>
+</head>
+
+<body>
+    <script src="/scripts/header.js"></script>
+
+    <h2>How to Know What to Code - Recursive Descent-Style Development</h2>
+
+    <p>If you're programming something you already have experience with, it is usually best to plan ahead. But when you're programming something for the first time, where do you start? This is the question I faced when creating my first game engine from scratch, and, as I usually do, I answered it in the simplest way I could think of: start at the beginning, and make everything I need when I need it.</p>
+
+    <p>Don't ask questions like, "will I need X?", or, "how do I make this system generic?" Instead, ask: "What is the specific program I'm trying to make, and what does it need first?" When Thing A needs Thing B, code Thing B right away, then return to Thing A. Eventually, one piece at a time, you'll assemble everything you need for your program. Here's a sample of how it went for my first from-scratch game, <a href="https://store.steampowered.com/app/2572310/" target="_blank">Grapestomper Rescue</a>:</p>
+
+    <ul>
+        <li>Come up with very simple game design, so I can focus on making the engine</li>
+        <li>Based on prior experience, decide on the general architecture - 4 threads, fixed 120Hz logic, up to 120Hz rendering, etc.</li>
+        <li>Decide on limitations to keep engine scope in-check: 240p, 8-bit colour, retro sound waves</li>
+        <li>Start trying to make the game. First I need a helicopter flying horizontally. But that needs...
+            <ul>
+                <li>Sprite rendering, which needs...
+                    <ul>
+                        <li>A pixel buffer, which needs...
+                            <ul>
+                                <li>An OpenGL context, which needs...
+                                    <ul>
+                                        <li>An X11 window. Get a simple window opened, then...</li>
+                                    </ul>
+                                </li>
+                                <li>Initialize an OpenGL context</li>
+                            </ul>
+                        </li>
+                        <li>Create simple GLSL shaders to handle colour palette-based rendering and scale the buffer to fit the window</li>
+                    </ul>
+                </li>
+                <li>Load 8-bit .bmps and blit them to the screen, with cropping</li>
+                <li>Now that pixels are on the screen, implement the system for the logic thread to get data to the rendering thread</li>
+                <li>Need a way to control the helicopter...
+                    <ul>
+                        <li>Capture OS events and collect the keyboard input per-frame for the update thread</li>
+                        <li>Create a simple interface for game code to check for input</li>
+                    </ul>
+                </li>
+                <li>RIght now, the helicopter just moves across the screen. Implement a rendering camera so things can be drawn based on a virtual camera position which follows the helicopter</li>
+                <li>Add a basic random terrain so I can see the helicopter moving across the map</li>
+                <li>The helicopter looks really stiff. It should rotate as you go side-to-side...</li>
+                <ul>
+                    <li>Implement rotated sprite rendering via sampling</li>
+                </ul>
+                <li>Now the helicopter should be able to shoot</li>
+                <ul>
+                    <li>Add individual pixel rendering to the renderer</li>
+                </ul>
+            </ul>
+        </li>
+    </ul>
+
+    <p>And so on. You can imagine how it went when I needed to add sound and music! Or maybe you can't... I ended up <a href="https://www.youtube.com/watch?v=uT5G9Hq0ANk" target="_blank">creating my own GUI music creation program from scratch!</a> In hindsight, that wasn't the fastest way to get a game made - but it was a great experience. However, the Path will not be requiring that particular diversion.</p>
+
+    <p>Lastly, remember: recursive descent is how I program things <i>when I don't have enough prior experience to plan ahead.</i></p>
+
+    <script src="/scripts/prev-next-step.js" path_next="/#reflections1" label_next="Back to the Path"></script>
+
+    <script src="/scripts/footer.js"></script>
+</body>
+
+</html>

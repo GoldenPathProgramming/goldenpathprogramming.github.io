@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/scripts/head.js"></script>
+</head>
+
+<body>
+    <script src="/scripts/header.js"></script>
+
+    <h2>Toggling Fullscreen with Xlib on Linux</h2>
+
+    <h3 style="text-align:left;">References</h3>
+    <ul>
+        <li><a href="https://www.x.org/releases/current/doc/libX11/libX11/libX11.html" target="_blank">Xlib documentation</a></li>
+        <li><a href="https://tronche.com/gui/x/xlib/window-information/properties-and-atoms.html" target="_blank">Xlib atoms</a></li>
+        <li><a href="https://tronche.com/gui/x/xlib/window-information/XInternAtom.html" target="_blank">XInternAtom</a></li>
+        <li><a href="https://tronche.com/gui/x/xlib/window-information/XGetWindowProperty.html" target="_blank">XGetWindowProperty</a></li>
+        <li><a href="https://specifications.freedesktop.org/wm/latest/ar01s05.html#id-1.6.8" target="_blank">_NET_WM_STATE</a></li>
+        <li><a href="https://tronche.com/gui/x/xlib/event-handling/XSendEvent.html" target="_blank">XSendEvent</a></li>
+    </ul>
+
+    <p>When running the provided source, press [Enter] to toggle fullscreen, and [Escape] to close.</p>
+
+    <script src="/scripts/embed-code.js" data-src="src/main.c"></script>
+    <p>Build with:</p>
+    <code>gcc main.c -lX11</code>
+    <hr/>
+
+    <code>    atoms.wm_state = XInternAtom (display, "_NET_WM_STATE", False);
+    atoms.fullscreen = XInternAtom (display, "_NET_WM_STATE_FULLSCREEN", False);</code>
+    <p>X11 uses unique identifiers called "Atoms" to store various window properties. These are the two we need for toggling fullscreen. _NET_WM_STATE is the property to which various window properties are added and from which they are removed. That is, when the window is made fullscreen, the _NET_WM_STATE property gets _NET_WM_STATE_FULLSCREEN added to it. When the window exits fullscreen, _NET_WM_STATE_FULLSCREEN is removed from _NET_WM_STATE.</p>
+
+    <code>bool IsFullscreen () {
+    Atom actual_type;
+    int actual_format;
+    unsigned long nitems;
+    unsigned long bytes_after;
+    Atom *prop;
+    
+    const auto result = XGetWindowProperty(display, window, atoms.wm_state, 0, 1024, False, XA_ATOM, &actual_type, &actual_format, &nitems, &bytes_after, (unsigned char **)&prop);
+
+    if (result != Success || actual_type != XA_ATOM || actual_format != 32) return false;
+
+    bool is_fullscreen = false;
+    for (unsigned long i = 0; i < nitems; ++i) {
+        if (prop[i] == atoms.fullscreen) {
+            is_fullscreen = true;
+            break;
+        }
+    }
+
+    XFree (prop);
+    return is_fullscreen;
+}</code>
+    <p>We use XGetWindowProperty to retrieve the data associated with the _NET_WM_STATE atom. In the case of _NET_WM_STATE, this is an array of Atoms representing various window properties, such as: fullscreen, maximized (vertically/horizontally), focused, and more. If a given atom is present in this array, the property is enabled. If the atom is not present, that property is disabled.</p>
+
+    <code>void ToggleFullscreen () {
+    bool go_fullscreen = !IsFullscreen ();
+
+    XEvent e = {};
+    e.type = ClientMessage;
+    e.xclient.window = window;
+    e.xclient.message_type = atoms.wm_state;
+    e.xclient.format = 32;
+    e.xclient.data.l[0] = go_fullscreen;
+    e.xclient.data.l[1] = atoms.fullscreen;
+    e.xclient.data.l[2] = 0;
+    e.xclient.data.l[3] = 1;
+
+    XSendEvent (display, DefaultRootWindow(display), False, SubstructureRedirectMask | SubstructureNotifyMask, &e);
+}</code>
+    <p>Here we create an XEvent to send to the window manager. XEvent is a tagged union, the tag being the "type." So we mark this event as a ClientMessage, and fill it out with the relevant data for _NET_WM_STATE. l[0] is the action: _NET_WM_STATE_REMOVE (0), _NET_WM_STATE_ADD (1), or _NET_WM_STATE_TOGGLE (2). l[1] is the atom to use for the action. l[2] is the second property to alter (you may alter two properties at once). l[3] is the source of the message (1 is for normal applications).</p>
+    <p>Notably, you could just use _NET_WM_STATE_TOGGLE instead of checking the fullscreen state. I implemented it this way (check first, then set or remove the property) since you'll probably want to track whether your window is fullscreen, rather than just blindly toggling it.</p>
+
+    <script src="/scripts/prev-next-step.js" path_next="/#oasis1" label_next="Back to the Path"></script>
+
+    <script src="/scripts/footer.js"></script>
+</body>
+
+</html>

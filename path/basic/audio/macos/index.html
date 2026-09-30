@@ -69,8 +69,8 @@
             .mScope = kAudioObjectPropertyScopeGlobal,
             .mElement = kAudioObjectPropertyElementMain
         };
-        DO_OR_LOG (AudioObjectAddPropertyListener (kAudioObjectSystemObject, &property_address, deviceChangedCallback, NULL), "Failed to add property listener for default device change");
-        defer { DO_OR_LOG (AudioObjectRemovePropertyListener (kAudioObjectSystemObject, &property_address, deviceChangedCallback, NULL), "Failed to remove property listener for default device change"); }</code>
+        DO_OR_LOG (AudioObjectAddPropertyListener (kAudioObjectSystemObject, &property_address, DeviceChangedCallback, NULL), "Failed to add property listener for default device change");
+        defer { DO_OR_LOG (AudioObjectRemovePropertyListener (kAudioObjectSystemObject, &property_address, DeviceChangedCallback, NULL), "Failed to remove property listener for default device change"); }</code>
     <p>We can set a callback function for various properties. We only need to monitor the default device in order to reinitialize whenever it changes. If you remove this default device-detecting code, you may find that MacOS automatically reroutes our audio to the new default device. However, the audio unit will not keep our previously set properties, particularly buffer size, so it's best to detect the change and reinitialize it ourselves.</p>
 
     <code>        DO_OR_RETRY (AudioUnitInitialize(tone_unit), "Error initializing unit");

@@ -69,7 +69,7 @@
     <p>This is a simple rendering pass. The drawing surface is cleared (based on the clear color set before), and we pass in some color and vertex information to draw a triangle. The identity projection matrix maps the viewport to horizontal and vertical axes of -1 to 1, so this triangle stretches to the corners and top-middle of the window. You'll see that OpenGL blends colors between the vertices.</p>
     <p>When creating the context, we specified, "GLX_DOUBLEBUFFER," which means we want 2 rendering buffers. One is displayed while the other is drawn into, then, when drawing is complete, we swap the buffers wholesale. This prevents the user seeing the individual drawing operations and only shows them complete frames. glXSwapBuffers is the function used to... swap the buffers.</p>
 
-    <p>If you'd like to learn more about legacy OpenGL, I recommend the book, "OpenGL Superbible 4th Edition," which covers version 2.1 quite well.</p>
+    <p>If you'd like to learn more about legacy OpenGL, I recommend the book, "OpenGL Superbible 4th Edition," (the Blue Book), and "OpenGL Programming Guide 6th Edition" (the Red Book). There are other editions for other OpenGL versions.</p>
 
     <script src="/scripts/prev-next-step.js" path_prev="../../event_loop/linux/" path_next="../../audio/linux/"></script>
 

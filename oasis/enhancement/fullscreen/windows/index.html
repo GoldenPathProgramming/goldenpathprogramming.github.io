@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/scripts/head.js"></script>
+</head>
+
+<body>
+    <script src="/scripts/header.js"></script>
+
+    <h2>Toggling Fullscreen with Win32 on Windows</h2>
+
+    <h3 style="text-align:left;">References</h3>
+    <ul>
+        <li><a href="https://learn.microsoft.com/en-us/windows/win32/api/" target="_blank">Win32 Documentation</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-monitorfromwindow" target="_blank">MonitorFromWindow</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-monitorinfoexw" target="_blank">MONITORINFOEX</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getmonitorinfow" target="_blank">GetMonitorInfo</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getwindowrect" target="_blank">GetWindowRect</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getwindowplacement" target="_blank">GetWindowPlacement</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowplacement" target="_blank">SetWindowPlacement</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/windows/win32/winmsg/window-styles" target="_blank">Window styles</a></li>
+    </ul>
+
+    <p>When running the provided source, press [Enter] to toggle fullscreen, and [Escape] to close.</p>
+
+    <script src="/scripts/embed-code.js" data-src="src/main.c"></script>
+    <p>Build with:</p>
+    <code>gcc main.c -lgdi32</code>
+    <hr/>
+
+    <code>static RECT fullscreen_monitor_rect = {};
+
+bool IsFullscreen () {
+    const auto monitor = MonitorFromWindow (window_handle, MONITOR_DEFAULTTOPRIMARY);
+    MONITORINFOEX info = {.cbSize = sizeof (MONITORINFOEX)};
+
+    const auto result = GetMonitorInfo (monitor, (LPMONITORINFO)&info);
+    assert (result);
+    if (result) {
+        fullscreen_monitor_rect = info.rcMonitor;
+        printf ("Monitor used for fullscreen: %ls\n", info.szDevice);
+    }
+    else {
+        printf ("Failed to get monitor info.");
+        HWND desktop_handle = GetDesktopWindow();
+        if (desktop_handle) GetWindowRect(desktop_handle, &fullscreen_monitor_rect);
+        else { fullscreen_monitor_rect.left = 0; fullscreen_monitor_rect.top = 0; fullscreen_monitor_rect.right = 800; fullscreen_monitor_rect.bottom = 600; }
+    }
+
+    const auto style = GetWindowLongPtr (window_handle, GWL_STYLE);
+    if (style & WS_CAPTION || style & WS_BORDER || style & WS_THICKFRAME || style & WS_DLGFRAME) return false;
+
+    RECT window_rect;
+    GetWindowRect (window_handle, &window_rect);
+
+    if (EqualRect (&fullscreen_monitor_rect, &window_rect)) return true;
+    else return false;
+}</code>
+    <p>Windows unfortunately doesn't provide a "borderless fullscreen" window property, so we have to work out whether or not our window is fullscreen ourselves. First we get the size of the monitor which our window is on, and store it in fullscreen_monitor_rect. We also have a couple of fallbacks in case we're unable to retrieve that info. Next, we get the window style and check it for a few properties that, if present, mean the window is not fullscreen. If this check passes, the window is borderless, so we check if its rect is equal to the monitor rect.</p>
+
+    <code>void ToggleFullscreen () {
+    static WINDOWPLACEMENT window_placement = {.length = sizeof (WINDOWPLACEMENT)};
+
+    if (!IsFullscreen ()) {
+        GetWindowPlacement (window_handle, &window_placement);
+
+        const auto style = GetWindowLongPtr (window_handle, GWL_STYLE);
+        SetWindowLongPtr (window_handle, GWL_STYLE, style & ~WS_OVERLAPPEDWINDOW);
+
+        SetWindowPos (window_handle, NULL, fullscreen_monitor_rect.left, fullscreen_monitor_rect.top, fullscreen_monitor_rect.right - fullscreen_monitor_rect.left, fullscreen_monitor_rect.bottom - fullscreen_monitor_rect.top, SWP_NOOWNERZORDER | SWP_FRAMECHANGED | SWP_SHOWWINDOW);
+    }
+    else {
+        const auto style = GetWindowLongPtr (window_handle, GWL_STYLE);
+        SetWindowLongPtr (window_handle, GWL_STYLE, style | WS_OVERLAPPEDWINDOW);
+
+        SetWindowPlacement (window_handle, &window_placement);
+    }
+}</code>
+    <p>Windows doesn't provide a single "go borderless fullscreen" setting, but we achieve it by setting the correct window style, size, and position. In this function we have a static variable tracking the non-fullscreen window placement. Since we start our window non-fullscreen, the first time this function is called, we'll hit GetWindowPlacement and fill in that struct. To go fullscreen (borderless windowed), we remove the WS_OVERLAPPEDWINDOW flag (flags, really), from the window style, then set the window's position and size to match fullscreen_monitor_rect.</p>
+    <p>To exit fullscreen, we add WS_OVERLAPPEDWINDOW back to the window style, and set the window placement back to the values stored in window_placement. This includes position, size, maximize/minimize status, etc.</p>
+
+    <script src="/scripts/prev-next-step.js" path_next="/#oasis1" label_next="Back to the Path"></script>
+
+    <script src="/scripts/footer.js"></script>
+</body>
+
+</html>
