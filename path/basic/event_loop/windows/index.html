@@ -40,15 +40,17 @@
             }
             else DispatchMessage (&message);
         }
+        Sleep (5);
     }</code>
-    <p>This loop runs continuously until the WM_QUIT message comes in. WM_QUIT is a special message which cannot be send to your window procedure, and should be handled separately. All other messages get forwarded to the window procedure via DispatchMessage.</p>
+    <p>This loop runs continuously until the WM_QUIT message comes in. WM_QUIT is a special message which cannot be sent to our window procedure, and should be handled separately. All other messages get forwarded to the window procedure via DispatchMessage.</p>
 
     <code>static LRESULT CALLBACK WindowProc(HWND window_handle, UINT message, WPARAM wParam, LPARAM lParam) {
+    LRESULT return_value = 0;
     switch (message) {</code>
-    <p>The window procedure receives the handle to the associated window (in a single-window application, this is always your window), the message, and two parameters which contain extra data. We switch on the message value to handle each one.</p>
+    <p>The window procedure receives the handle to the associated window (in a single-window application, this is always your window), the message, and two parameters which contain extra data. We switch on the message value to handle each one. When handling most messages we'll return 0, but for some messages we may need to return something else, so we use this return_value variable.</p>
 
     <code>        case WM_DESTROY: PostQuitMessage (0); break;</code>
-    <p>WM_DESTROY is called when your window is destroyed. I like to call PostQuitMessage to add a WM_QUIT message to the queue - that way, I can handle "quitting" in a single place.</p>
+    <p>WM_DESTROY is called when our window is destroyed. I like to call PostQuitMessage to add a WM_QUIT message to the queue - that way, I can handle "quitting" in a single place.</p>
 
     <code>        case WM_PAINT: ValidateRect (window_handle, NULL); break;</code>
     <p>This is where you'd put rendering code if you were to use Win32 rendering APIs such as GDI. I'll skip this and go straight to OpenGL, but feel free to look into it. I just call ValidateRect to tell Windows that the window has been redrawn.</p>
@@ -57,19 +59,22 @@
         case WM_KEYDOWN:
         case WM_SYSKEYUP:
         case WM_KEYUP: {
-            bool key_down = ((lParam & (1 << 31)) == 0);
-            if (key_down && (lParam & (1 << 30))) {
+            bool key_down = (((DWORD)lParam & (1ull << 31)) == 0);
+            if (key_down && ((DWORD)lParam & (1ull << 30))) {
                 puts ("Key repeat");
                 break;
             }
             printf ("Key %s %s\n", key_down ? "pressed" : "released", vk_print[wParam & 0xff]);
-        }</code>
+        } break;</code>
     <p>WM_KEYDOWN/UP are the normal key messages, but if ALT is being held, you'll receive the SYS versions instead. I like to just internally track the state of keys in my programs so I lump them together. Since I've combined up and down events, I retrieve the up/down state of the key from lParam, and check for key repeats (when holding a key causes more events to be sent). I've prepared the vk_print[] array of strings so we can print out the keys being pressed.</p>
+
+    <code>        case WM_MOUSEWHEEL: printf ("Scroll %.2f\n", (float)GET_WHEEL_DELTA_WPARAM(wParam) / WHEEL_DELTA); break;</code>
+    <p>Mouse scrolling is reported to us as an integer, where positive numbers are up on the wheel, and negative numbers are down. Most basic mice will cause a value of 120 (WHEEL_DELTA) per scroll notch, but mice which support high-precision scrolling, and touchpads, will report several events with smaller increments instead. We'll explore how to accumulate these values for games in a later step on the Path.</p>
 
     <code>        default: return DefWindowProc (window_handle, message, wParam, lParam);
     }
-    return 0;</code>
-    <p>For any message we don't handle, we pass it on to DefWindowProc. Otherwise, we return 0 to tell Windows we've handled the message.</p>
+    return return_value;</code>
+    <p>For any message we don't handle, we pass it on to DefWindowProc. Otherwise, we return return_value to tell Windows we've handled the message.</p>
 
     <script src="/scripts/prev-next-step.js" path_prev="../../window/windows/" path_next="../../opengl/windows/"></script>
 

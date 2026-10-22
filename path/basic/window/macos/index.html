@@ -19,6 +19,7 @@
         <li><a href="https://developer.apple.com/documentation/appkit/nswindowdelegate" target="_blank">NSWindowDelegate</a></li>
         <li><a href="https://developer.apple.com/documentation/appkit/nsapplication/activate()" target="_blank">activate</a></li>
         <li><a href="https://developer.apple.com/documentation/appkit/nsapplication/activate(ignoringotherapps:)" target="_blank">activate(ignoringOtherApps:)</a></li>
+        <li><a href="https://developer.apple.com/documentation/foundation/nsproxy/responds(to:)?changes=_8&language=objc" target="_blank">respondsToSelector</a></li>
         <li><a href="https://developer.apple.com/documentation/swift/marking-api-availability-in-objective-c" target="_blank">@available</a></li>
         <li><a href="https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/MemoryMgmt/Articles/mmAutoreleasePools.html" target="_blank">Using Autorelease Pool Blocks</a></li>
         <li><a href="https://developer.apple.com/documentation/foundation/nsautoreleasepool" target="_blank">NSAutoreleasePool</a></li>
@@ -79,9 +80,12 @@
     <p>Here we create our own object type which implements both NSApplicationDelegate, and NSWindowDelegate. These delegate classes are something the OS calls into to communicate with our app. There are many functions we can implement, but the only ones we need for now are applicationShouldTerminate (from NSApplicationDelegate), and windowWillClose (from NSWindowDelegate). We just set our quit variable to true and tell the OS to cancel the termination, since we're going to handle it. In a standard Cocoa app, you might hand off the run loop of your program to the OS, but games don't usually work that way.</p>
     <p>Note that I didn't include declarations for the two functions in the @interface. They don't need to be declared there, because they're already declared in the NSApplicationDelegate and NSWindowDelegate protocols, which we inherit from.</p>
 
-    <code>    if (@available(macOS 14.0, *)) [(id)NSApp activate];
-    else [NSApp activateIgnoringOtherApps:true];</code>
-    <p>activate sends a request to the OS to actually create and show the window, and start processing our app. The API was changed in MacOS 14 from activateIgnoringOtherApps:BOOL, to just activate. We can check at runtime which version we should call with the @available keyword. Generally, when Apple deprecates something, you can use this code to optionally call the new API on newer systems. This can keep your app working when Apple eventually removes the deprecated function. The (id) cast just prevents a compilation error on SDK &lt; 14.</p>
+    <code>    if ([app respondsToSelector:@selector(activate)]) [(id)app activate];
+    else [app activateIgnoringOtherApps:true];</code>
+    <p>activate sends a request to the OS to actually create and show the window, and start processing our app. The API was changed in MacOS 14 from activateIgnoringOtherApps:BOOL, to just activate. To make our code both work on older systems, and call the new API on newer systems, we can check for the newer API with respondsToSelector. This is a runtime check, so the same binary will call a different version of activate on different systems. We cast app to an id on the newer call to avoid a compilation warning on older systems where that message doesn't exist.</p>
+    <p>NOTE: The canonical way to optionally call a new API on macOS is actually this code:</p>
+    <code>if (@available(macOS 14.0, *))</code>
+    <p>This works on my mac systems, but I had reports from a reliable user that this check somehow returned true on their macOS 13 system, causing an exception in the following activate call. respondsToSelector is the alternative solution I found for this issue, but further investigation may be required.</p>
 
     <code>    while (!quit) {
         @autoreleasepool {

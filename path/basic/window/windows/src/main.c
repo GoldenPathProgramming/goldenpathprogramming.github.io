@@ -2,11 +2,8 @@
 #define _UNICODE
 #include <windows.h>
 #include <assert.h>
-#include <stdio.h>
 
 int main() {
-    puts ("Hello");
-
     const wchar_t window_class_name[] = L"Window Class";
     const WNDCLASS window_class = {
         .lpfnWndProc = DefWindowProc,

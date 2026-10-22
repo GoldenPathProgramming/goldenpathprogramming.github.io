@@ -13,22 +13,32 @@ bool IsFullscreen () {
     Atom actual_type;
     int actual_format;
     unsigned long nitems;
-    unsigned long bytes_after;
+    unsigned long bytes_after = 1;
+    long offset = 0;
     Atom *prop;
-    
-    const auto result = XGetWindowProperty(display, window, atoms.wm_state, 0, 1024, False, XA_ATOM, &actual_type, &actual_format, &nitems, &bytes_after, (unsigned char **)&prop);
-
-    if (result != Success || actual_type != XA_ATOM || actual_format != 32) return false;
-
     bool is_fullscreen = false;
-    for (unsigned long i = 0; i < nitems; ++i) {
-        if (prop[i] == atoms.fullscreen) {
-            is_fullscreen = true;
-            break;
-        }
-    }
+    
+    while (bytes_after && !is_fullscreen) {
+        const auto result = XGetWindowProperty(display, window, atoms.wm_state, offset, 1024, False, XA_ATOM, &actual_type, &actual_format, &nitems, &bytes_after, (unsigned char **)&prop);
 
-    XFree (prop);
+        if (result != Success) return false;
+        
+        if (actual_type != XA_ATOM || actual_format != 32) {
+            XFree (prop);
+            return false;
+        }
+
+        for (unsigned long i = 0; i < nitems; ++i) {
+            if (prop[i] == atoms.fullscreen) {
+                is_fullscreen = true;
+                break;
+            }
+        }
+
+        XFree (prop);
+
+        offset += nitems; // nitems guaranteed to be 32, because of check above
+    }
     return is_fullscreen;
 }
 
@@ -66,11 +76,8 @@ int main () {
 
     window = XCreateWindow(display, root_window, 0, 0, 640, 480, 0, visual.depth, InputOutput, visual.visual, CWBackPixel | CWColormap | CWEventMask, &attributes);
 
-    XMapWindow (display, window);
-    XFlush (display);
-
     #define WINDOW_TITLE "Golden Path"
-    XChangeProperty (display, window, XA_WM_NAME, XA_STRING, 8, 0, (const unsigned char*)WINDOW_TITLE, sizeof (WINDOW_TITLE)-1);
+    XChangeProperty (display, window, XInternAtom (display, "_NET_WM_NAME", False), XInternAtom (display, "UTF8_STRING", False), 8, 0, (const unsigned char*)WINDOW_TITLE, sizeof (WINDOW_TITLE)-1);
 
     Atom WM_DELETE_WINDOW = XInternAtom (display, "WM_DELETE_WINDOW", False);
     if (WM_DELETE_WINDOW != None)
@@ -78,6 +85,9 @@ int main () {
 
     atoms.wm_state = XInternAtom (display, "_NET_WM_STATE", False);
     atoms.fullscreen = XInternAtom (display, "_NET_WM_STATE_FULLSCREEN", False);
+
+    XMapWindow (display, window);
+    XFlush (display);
 
     bool quit = false;
     while (!quit) {
@@ -89,17 +99,15 @@ int main () {
             } break;
 
             case ClientMessage: {
-                const auto c = (XClientMessageEvent*)&e;
-                if (WM_DELETE_WINDOW && (Atom)c->data.l[0] == WM_DELETE_WINDOW) {
+                const auto c = &e.xclient;
+                if ((Atom)c->data.l[0] == WM_DELETE_WINDOW) {
                     quit = true;
                 }
             } break;
 
             case KeyPress: {
-                const auto k = (XKeyPressedEvent*)&e;
-                char c;
-                KeySym sym;
-                XLookupString (k, &c, 1, &sym, NULL);
+                const auto k = &e.xkey;
+                const auto sym = XLookupKeysym (k, 0);
                 switch (sym) {
                     case XK_Return: ToggleFullscreen (); break;
                     case XK_Escape: quit = true; break;

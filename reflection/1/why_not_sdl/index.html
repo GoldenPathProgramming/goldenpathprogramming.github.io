@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/scripts/head.js"></script>
+</head>
+
+<body>
+    <script src="/scripts/header.js"></script>
+
+    <h2>Why Not Use a Platform Library Like SDL?</h2>
+
+    <p>tl;dr: To gain experience, and become a better programmer.</p>
+
+    <p>Using a library to handle interfacing with your target platforms is perfectly reasonable, and I won't recommend against it. That said, here are the reasons why I wrote my OS code from scratch, and why you may want to as well:</p>
+
+    <p>I've used SDL, GLFW, SFML, and others in the past. Many of these libraries work well, and are well-designed. And, since they're open-source, if I ever ran into a bug or problem, I could dive into the code and fix it... Right? As it turned out, that was wrong. Years ago, I actually did run into a bug in SDL2, but I was unable to fix it myself because I lacked experience writing OS-native code. Ironically, the only way for me to be comfortable relying on someone else's platform library is to write my own first, so that I really am able to modify the library code if needed.</p>
+
+    <p>Similarly, if I were to write my code relying on a platform library, and that library did't end up supporting a platform I want to target, I'd need to write native code for that platform myself. If I'd always depended on a library for that, I'd struggle to write the platform native code myself.</p>
+
+    <p>Without having written platform native code myself, I'd lack the knowledge to judge whether the library I used were designed well. Only by writing the code myself can I discern between good and bad platform code.</p>
+
+    <p>This is more specific to this site - there are plenty of tutorials and examples on how to use the various platform libraries, but there just aren't many good guides on how to do it from scratch. And if no-one's teaching it, then how's anybody going to write the next great platform library?</p>
+
+    <script src="/scripts/prev-next-step.js" path_next="/#reflections1" label_next="Back to the Path"></script>
+
+    <script src="/scripts/footer.js"></script>
+</body>
+
+</html>

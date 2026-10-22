@@ -35,6 +35,7 @@
 #import &lt;Cocoa/Cocoa.h>
 #include &lt;OpenGL/glu.h></code>
     <p>Without that definition, you'll get loads of deprecation warnings when using OpenGL on Mac. On other platforms I'm more judicious about #includes, but since Apple ships their own OpenGL headers, I just go straight for glu.h which also includes gl.h.</p>
+    <p>IMPORTANT NOTE: #including glu.h also includes gl.h, which is the macOS SDK's file for defining everything in OpenGL 2.1. If you want the declarations from OpenGL 3.2 core or 4.1 core, you must #include OpenGL/gl3.h. If you're using an OpenGL core profile, you probably don't need glu.h either.</p>
 
     <code>    NSOpenGLPixelFormatAttribute gl_attributes[] = {
         NSOpenGLPFAColorSize, 24,

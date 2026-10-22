@@ -40,7 +40,6 @@ typedef void (*glLinkProgram_t) (GLuint program); glLinkProgram_t glLinkProgram;
 typedef void (*glGetProgramInfoLog_t) (GLuint program, GLsizei maxLength, GLsizei *length, GLchar *infoLog); glGetProgramInfoLog_t glGetProgramInfoLog;
 typedef void (*glDeleteShader_t) (GLuint shader); glDeleteShader_t glDeleteShader;
 typedef void (*glUseProgram_t) (GLuint program); glUseProgram_t glUseProgram;
-typedef void (*glValidateProgram_t) (GLuint program); glValidateProgram_t glValidateProgram;
 typedef void (*glGetProgramiv_t) (GLuint program, GLenum pname, GLint *params); glGetProgramiv_t glGetProgramiv;</code>
     <p>These are the prototypes for all the functions used in this new code. You'll need these on Linux/Windows, but not on MacOS.</p>
 
@@ -87,7 +86,7 @@ void main()
     glAttachShader (program, vertex);
     glAttachShader (program, fragment);
     glLinkProgram (program);
-    glGetShaderiv (program, GL_LINK_STATUS, &success);
+    glGetProgramiv (program, GL_LINK_STATUS, &success);
     if (!success) {
         char buf[512];
         glGetProgramInfoLog (program, sizeof (buf), NULL, buf);
@@ -98,16 +97,8 @@ void main()
 
     <code>    glDeleteShader (vertex);
     glDeleteShader (fragment);
-    glUseProgram (program);
-    glValidateProgram (program);
-    glGetProgramiv (program, GL_VALIDATE_STATUS, &success);
-    if (!success) {
-        char buf[512];
-        glGetProgramInfoLog (program, 512, NULL, buf);
-        printf ("OpenGL shader validation error [%s]", buf);
-        return -1;
-    }</code>
-    <p>Once the shaders are attached to the program, we can delete them. Then we "validate" the program, which verifies that the program is compatible with the current OpenGL state.</p>
+    glUseProgram (program);</code>
+    <p>Once the shaders are attached to the program, we can delete them.</p>
 
     <code>        glBegin (GL_TRIANGLES);
             glColor3f (1, 0, 0);
@@ -119,7 +110,7 @@ void main()
         glEnd ();</code>
     <p>This is the same RGB triangle as in the "Hello Triangle" OpenGL tutorial. However, because of the shaders, it will be vertically shortened and all the green is removed.</p>
 
-    <script src="/scripts/prev-next-step.js" path_next="/#oasis0" label_next="Back to the Path"></script>
+    <script src="/scripts/prev-next-step.js" path_next="/#oasis1" label_next="Back to the Path"></script>
 
     <script src="/scripts/footer.js"></script>
 </body>

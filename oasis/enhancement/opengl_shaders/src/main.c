@@ -10,7 +10,6 @@ typedef void (*glLinkProgram_t) (GLuint program); glLinkProgram_t glLinkProgram;
 typedef void (*glGetProgramInfoLog_t) (GLuint program, GLsizei maxLength, GLsizei *length, GLchar *infoLog); glGetProgramInfoLog_t glGetProgramInfoLog;
 typedef void (*glDeleteShader_t) (GLuint shader); glDeleteShader_t glDeleteShader;
 typedef void (*glUseProgram_t) (GLuint program); glUseProgram_t glUseProgram;
-typedef void (*glValidateProgram_t) (GLuint program); glValidateProgram_t glValidateProgram;
 typedef void (*glGetProgramiv_t) (GLuint program, GLenum pname, GLint *params); glGetProgramiv_t glGetProgramiv;
 
 // All platforms:
@@ -64,7 +63,7 @@ void main()
     glAttachShader (program, vertex);
     glAttachShader (program, fragment);
     glLinkProgram (program);
-    glGetShaderiv (program, GL_LINK_STATUS, &success);
+    glGetProgramiv (program, GL_LINK_STATUS, &success);
     if (!success) {
         char buf[512];
         glGetProgramInfoLog (program, sizeof (buf), NULL, buf);
@@ -75,14 +74,6 @@ void main()
     glDeleteShader (vertex);
     glDeleteShader (fragment);
     glUseProgram (program);
-    glValidateProgram (program);
-    glGetProgramiv (program, GL_VALIDATE_STATUS, &success);
-    if (!success) {
-        char buf[512];
-        glGetProgramInfoLog (program, 512, NULL, buf);
-        printf ("OpenGL shader validation error [%s]", buf);
-        return -1;
-    }
 
 // Inside an event loop:
         glBegin (GL_TRIANGLES);

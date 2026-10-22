@@ -1,14 +1,15 @@
 // Compile with:
-// gcc linux.c -lGL
+// gcc linux.c -lGL -lX11
 
 #include <X11/Xatom.h>
 #include <GL/glx.h>
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 static struct {
-    int16_t w, h;
+    int32_t w, h;
 } window = {.w = 640, .h = 480};
 
 static void OnResize () {
@@ -33,7 +34,6 @@ typedef void (*glLinkProgram_t) (GLuint program); glLinkProgram_t glLinkProgram;
 typedef void (*glGetProgramInfoLog_t) (GLuint program, GLsizei maxLength, GLsizei *length, GLchar *infoLog); glGetProgramInfoLog_t glGetProgramInfoLog;
 typedef void (*glDeleteShader_t) (GLuint shader); glDeleteShader_t glDeleteShader;
 typedef void (*glUseProgram_t) (GLuint program); glUseProgram_t glUseProgram;
-typedef void (*glValidateProgram_t) (GLuint program); glValidateProgram_t glValidateProgram;
 typedef void (*glGetProgramiv_t) (GLuint program, GLenum pname, GLint *params); glGetProgramiv_t glGetProgramiv;
 
 #define GLFUNC(__funcname__) do { __funcname__ = (__funcname__##_t)glXGetProcAddress ((const GLubyte*)#__funcname__); assert (__funcname__); if (__funcname__ == NULL) { puts ("GLX failed to find function ["#__funcname__"]"); return false; } } while (0)
@@ -50,21 +50,22 @@ bool GetGLFuncs () {
     GLFUNC (glGetProgramInfoLog);
     GLFUNC (glDeleteShader);
     GLFUNC (glUseProgram);
-    GLFUNC (glValidateProgram);
     GLFUNC (glGetProgramiv);
     return true;
 }
 
-bool GLHasExtension (const char *const haystack, const char *const needle) {
-    const char *e = haystack;
-    const auto len = strlen (needle);
+bool GLHasExtension (const char *const extension) {
+    const char *gl_extensions = (const char*)glGetString (GL_EXTENSIONS);
+
+    const auto len = strlen (extension);
     for (;;) {
-        e = strstr (e, needle);
-        if (e == NULL) return false;
-        char next = *(e + len);
+        gl_extensions = strstr (gl_extensions, extension);
+        if (gl_extensions == NULL) return false;
+        char next = *(gl_extensions + len);
         if (next == ' ' || next == '\0') return true;
-        e += len;
+        gl_extensions += len;
     }
+    return false;
 }
 
 int main () {
@@ -88,14 +89,22 @@ int main () {
 
     XVisualInfo* visual = glXGetVisualFromFBConfig(display, fb_config); assert(visual);
 
-    auto gl_context_temp = glXCreateContext (display, visual, 0, true); assert (gl_context_temp);
-
     XSetWindowAttributes attributes = {
         .background_pixel = 0x403a4d,
         .colormap = XCreateColormap (display, root_window, visual->visual, AllocNone),
         .event_mask = StructureNotifyMask | KeyPressMask | KeyReleaseMask | FocusChangeMask | PointerMotionMask | ButtonPressMask | ButtonReleaseMask,
     };
     const auto xwindow = XCreateWindow(display, root_window, 0, 0, 640, 480, 0, visual->depth, 0, visual->visual, CWBackPixel | CWColormap | CWEventMask, &attributes);
+
+    #define WINDOW_TITLE "Golden Path"
+    XChangeProperty (display, xwindow, XInternAtom (display, "_NET_WM_NAME", False), XInternAtom (display, "UTF8_STRING", False), 8, 0, (const unsigned char*)WINDOW_TITLE, sizeof (WINDOW_TITLE)-1);
+
+    Atom WM_DELETE_WINDOW = XInternAtom (display, "WM_DELETE_WINDOW", False);
+    if (WM_DELETE_WINDOW != None)
+        { const auto result = XSetWMProtocols (display, xwindow, &WM_DELETE_WINDOW, 1); assert (result); }
+
+    XMapWindow (display, xwindow);
+    XFlush (display);
 
     typedef GLXContext (*glXCreateContextAttribsARB_t) (Display *dpy, GLXFBConfig config, GLXContext share_context, Bool direct, const int *attrib_list);
     const auto glXCreateContextAttribsARB = (glXCreateContextAttribsARB_t)glXGetProcAddress ((const GLubyte*)"glXCreateContextAttribsARB"); assert (glXCreateContextAttribsARB);
@@ -111,8 +120,6 @@ int main () {
 
     { const auto result = glXMakeCurrent (display, xwindow, gl_context); assert (result); }
 
-    glXDestroyContext (display, gl_context_temp);
-
     const char *gl_version = (const char*)glGetString (GL_VERSION);
     printf ("OpenGL version: %s\n", gl_version);
 
@@ -124,21 +131,8 @@ int main () {
         if (!(context_profile & GL_CONTEXT_COMPATIBILITY_PROFILE_BIT)) glversion_compatibility = false;
     }
     else if (glversion.full == (glversion_t){.major=3,.minor=1}.full) { // Version 3.1 removed deprecated functionality, but did not have profiles yet.
-        if (!GLHasExtension(glGetString (GL_EXTENSIONS), "GL_ARB_compatibility")) glversion_compatibility = false;
+        if (!GLHasExtension ("GL_ARB_compatibility")) glversion_compatibility = false;
     }
-
-    XMapWindow (display, xwindow);
-    XFlush (display);
-
-    #define WINDOW_TITLE "Golden Path"
-    XChangeProperty (display, xwindow, XA_WM_NAME, XA_STRING, 8, 0, (const unsigned char*)WINDOW_TITLE, sizeof (WINDOW_TITLE)-1);
-
-    Atom WM_DELETE_WINDOW = XInternAtom (display, "WM_DELETE_WINDOW", False);
-    if (WM_DELETE_WINDOW != None)
-        { const auto result = XSetWMProtocols (display, xwindow, &WM_DELETE_WINDOW, 1); assert (result); }
-    
-    OnResize ();
-    glClearColor (0, 0, 0, 0);
 
     if (glversion.full < (glversion_t){.major = 2, .minor = 1}.full || (glversion.full > (glversion_t){.major = 2, .minor = 1}.full && !glversion_compatibility)) {
         puts ("OpenGL context 2.1, or >2.1 with compatibility profile required.");
@@ -149,6 +143,9 @@ int main () {
         puts ("Failed to retrieve OpenGL functions.");
         return 1;
     };
+    
+    OnResize ();
+    glClearColor (0, 0, 0, 0);
 
     const auto vertex = glCreateShader (GL_VERTEX_SHADER);
     glShaderSource (vertex, 1, &(const char*){
@@ -199,7 +196,7 @@ void main()
     glAttachShader (program, vertex);
     glAttachShader (program, fragment);
     glLinkProgram (program);
-    glGetShaderiv (program, GL_LINK_STATUS, &success);
+    glGetProgramiv (program, GL_LINK_STATUS, &success);
     if (!success) {
         char buf[512];
         glGetProgramInfoLog (program, sizeof (buf), NULL, buf);
@@ -210,14 +207,6 @@ void main()
     glDeleteShader (vertex);
     glDeleteShader (fragment);
     glUseProgram (program);
-    glValidateProgram (program);
-	glGetProgramiv (program, GL_VALIDATE_STATUS, &success);
-	if (!success) {
-		char buf[512];
-		glGetProgramInfoLog (program, 512, NULL, buf);
-		printf ("OpenGL shader validation error [%s]", buf);
-		return -1;
-	}
 
     bool quit = false;
     while (!quit) {
@@ -230,14 +219,13 @@ void main()
                 } break;
 
                 case ClientMessage: {
-                    const auto c = (XClientMessageEvent*)&e;
-                    if (WM_DELETE_WINDOW && (Atom)c->data.l[0] == WM_DELETE_WINDOW) {
+                    const auto c = &e.xclient;
+                    if ((Atom)c->data.l[0] == WM_DELETE_WINDOW)
                         quit = true;
-                    }
                 } break;
 
                 case ConfigureNotify: {
-                    const auto c = (XConfigureEvent*)&e;
+                    const auto c = &e.xconfigure;
                     if (c->width != window.w || c->height != window.h) {
                         window.w = c->width;
                         window.h = c->height;
@@ -261,6 +249,8 @@ void main()
         glEnd ();
 
         glXSwapBuffers (display, xwindow);
+
+        usleep (1000);
     }
 
     return 0;

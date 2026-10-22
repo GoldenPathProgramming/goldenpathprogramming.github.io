@@ -29,9 +29,7 @@ const char *HResultToStr (HRESULT result) {
     static char error_buffer[512];
     DWORD len;  // Number of chars returned.
     len = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, result, 0, error_buffer, 512, NULL);
-    if (len == 0) {
-        if (len == 0) snprintf (error_buffer, sizeof (error_buffer), "HRESULT error message not found");
-    }
+    if (len == 0) snprintf (error_buffer, sizeof (error_buffer), "HRESULT error message not found");
     return error_buffer;
 }
 
@@ -40,7 +38,7 @@ const char *HResultToStr (HRESULT result) {
 
 class VoiceCallback : public IXAudio2VoiceCallback {
 public:
-    void OnBufferEnd(void* pBufferContext) override {
+    void OnBufferEnd (void* pBufferContext) override {
         static bool sample_buffer_swap = 0;
         float *data = audio_buffers[sample_buffer_swap];
         for (int i = 0; i < PERIOD_SIZE; ++i) {
@@ -50,7 +48,7 @@ public:
             *data++ = sample;
         }
         xaudio_source_voice->SubmitSourceBuffer (&xaudio_buffers[sample_buffer_swap], nullptr);
-        sample_buffer_swap = !sample_buffer_swap;;
+        sample_buffer_swap = !sample_buffer_swap;
     }
 
     void OnStreamEnd() {}
@@ -155,6 +153,7 @@ int main () {
                     }
                 }
             }
+            Sleep(1);
         }
         LOG ("Xaudio keepalive %s", quit ? "quitting" : (restart_audio ? "restarting" : "!unknown!"));
     }

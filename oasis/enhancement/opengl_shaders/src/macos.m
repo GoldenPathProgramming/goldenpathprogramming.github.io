@@ -84,7 +84,7 @@ int main () {
 
     printf ("GL context version: %s\n", glGetString (GL_VERSION));
 
-    if (@available(macOS 14.0, *)) [(id)app activate];
+    if ([app respondsToSelector:@selector(activate)]) [(id)app activate];
     else [app activateIgnoringOtherApps:true];
 
     [delegate Resize];
@@ -140,7 +140,7 @@ void main()
     glAttachShader (program, vertex);
     glAttachShader (program, fragment);
     glLinkProgram (program);
-    glGetShaderiv (program, GL_LINK_STATUS, &success);
+    glGetProgramiv (program, GL_LINK_STATUS, &success);
     if (!success) {
         char buf[512];
         glGetProgramInfoLog (program, sizeof (buf), NULL, buf);
@@ -151,14 +151,6 @@ void main()
     glDeleteShader (vertex);
     glDeleteShader (fragment);
     glUseProgram (program);
-    glValidateProgram (program);
-    glGetProgramiv (program, GL_VALIDATE_STATUS, &success);
-    if (!success) {
-        char buf[512];
-        glGetProgramInfoLog (program, 512, NULL, buf);
-        printf ("OpenGL shader validation error [%s]", buf);
-        return -1;
-    }
 
     while (!quit) {
         @autoreleasepool {

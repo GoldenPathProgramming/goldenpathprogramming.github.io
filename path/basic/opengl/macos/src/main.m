@@ -82,7 +82,7 @@ int main () {
 
     printf ("GL context version: %s\n", glGetString (GL_VERSION));
 
-    if (@available(macOS 14.0, *)) [(id)app activate];
+    if ([app respondsToSelector:@selector(activate)]) [(id)app activate];
     else [app activateIgnoringOtherApps:true];
 
     [delegate Resize];

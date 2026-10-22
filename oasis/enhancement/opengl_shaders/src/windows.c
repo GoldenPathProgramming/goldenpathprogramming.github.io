@@ -19,7 +19,6 @@ static bool quit = false;
 #define GL_VERTEX_SHADER                            0x8B31
 #define GL_COMPILE_STATUS                           0x8B81
 #define GL_LINK_STATUS                              0x8B82
-#define GL_VALIDATE_STATUS                          0x8B83
 typedef char GLchar;
 
 typedef GLuint (*glCreateShader_t) (GLenum shaderType); glCreateShader_t glCreateShader;
@@ -33,7 +32,6 @@ typedef void (*glLinkProgram_t) (GLuint program); glLinkProgram_t glLinkProgram;
 typedef void (*glGetProgramInfoLog_t) (GLuint program, GLsizei maxLength, GLsizei *length, GLchar *infoLog); glGetProgramInfoLog_t glGetProgramInfoLog;
 typedef void (*glDeleteShader_t) (GLuint shader); glDeleteShader_t glDeleteShader;
 typedef void (*glUseProgram_t) (GLuint program); glUseProgram_t glUseProgram;
-typedef void (*glValidateProgram_t) (GLuint program); glValidateProgram_t glValidateProgram;
 typedef void (*glGetProgramiv_t) (GLuint program, GLenum pname, GLint *params); glGetProgramiv_t glGetProgramiv;
 
 #define GLFUNC(__funcname__) do { __funcname__ = (__funcname__##_t)wglGetProcAddress ((const GLubyte*)#__funcname__); assert (__funcname__); if (__funcname__ == NULL) { puts ("WGL failed to find function ["#__funcname__"]"); return false; } } while (0)
@@ -50,7 +48,6 @@ bool GetGLFuncs () {
     GLFUNC (glGetProgramInfoLog);
     GLFUNC (glDeleteShader);
     GLFUNC (glUseProgram);
-    GLFUNC (glValidateProgram);
     GLFUNC (glGetProgramiv);
     return true;
 }
@@ -60,16 +57,18 @@ typedef union {
     uint16_t full;
 } glversion_t;
 
-bool GLHasExtension (const char *const haystack, const char *const needle) {
-    const char *e = haystack;
-    const auto len = strlen (needle);
+bool GLHasExtension (const char *const extension) {
+    const char *gl_extensions = (const char*)glGetString (GL_EXTENSIONS);
+
+    const auto len = strlen (extension);
     for (;;) {
-        e = strstr (e, needle);
-        if (e == NULL) return false;
-        char next = *(e + len);
+        gl_extensions = strstr (gl_extensions, extension);
+        if (gl_extensions == NULL) return false;
+        char next = *(gl_extensions + len);
         if (next == ' ' || next == '\0') return true;
-        e += len;
+        gl_extensions += len;
     }
+    return false;
 }
 
 static LRESULT CALLBACK WindowProc(HWND window_handle, UINT message, WPARAM wParam, LPARAM lParam);
@@ -119,12 +118,6 @@ int main () {
     wglDeleteContext (gl_context_temp);
 
     const char *gl_version = (const char*)glGetString (GL_VERSION);
-    const char *gl_extensions = (const char*)glGetString (GL_EXTENSIONS);
-    const char *wgl_extensions = gl_extensions;
-
-    typedef const char* (*wglGetExtensionsStringEXT_t) (void);
-    const auto wglGetExtensionsStringEXT = (wglGetExtensionsStringEXT_t)wglGetProcAddress ("wglGetExtensionsStringEXT");
-    if (wglGetExtensionsStringEXT) wgl_extensions = wglGetExtensionsStringEXT ();
 
     glversion_t glversion = {.major = gl_version[0] - '0', .minor = gl_version[2] - '0'};
     bool glversion_compatibility = true;
@@ -134,8 +127,9 @@ int main () {
         if (!(context_profile & WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB)) glversion_compatibility = false;
     }
     else if (glversion.full == (glversion_t){.major=3,.minor=1}.full) { // Version 3.1 removed deprecated functionality, but did not have profiles yet.
-        if (!GLHasExtension(gl_extensions, "GL_ARB_compatibility")) glversion_compatibility = false;
+        if (!GLHasExtension ("GL_ARB_compatibility")) glversion_compatibility = false;
     }
+
     glClearColor (0, 0, 0, 0);
 
     if (glversion.full < (glversion_t){.major = 2, .minor = 1}.full || (glversion.full > (glversion_t){.major = 2, .minor = 1}.full && !glversion_compatibility)) {
@@ -197,7 +191,7 @@ void main()
     glAttachShader (program, vertex);
     glAttachShader (program, fragment);
     glLinkProgram (program);
-    glGetShaderiv (program, GL_LINK_STATUS, &success);
+    glGetProgramiv (program, GL_LINK_STATUS, &success);
     if (!success) {
         char buf[512];
         glGetProgramInfoLog (program, sizeof (buf), NULL, buf);
@@ -208,21 +202,11 @@ void main()
     glDeleteShader (vertex);
     glDeleteShader (fragment);
     glUseProgram (program);
-    glValidateProgram (program);
-	glGetProgramiv (program, GL_VALIDATE_STATUS, &success);
-	if (!success) {
-		char buf[512];
-		glGetProgramInfoLog (program, 512, NULL, buf);
-		printf ("OpenGL shader validation error [%s]", buf);
-		return -1;
-	}
-
+    
     while (!quit) {
         MSG message;
         while (PeekMessage (&message, NULL, 0, 0, PM_REMOVE)) {
-            if (message.message == WM_QUIT) {
-                quit = true;
-            }
+            if (message.message == WM_QUIT) quit = true;
             else DispatchMessage (&message);
         }
         

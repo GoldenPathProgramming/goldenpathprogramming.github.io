@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 static struct {
-    int16_t w, h;
+    int32_t w, h;
 } window = {.w = 640, .h = 480};
 
 static void OnResize () {
@@ -36,22 +36,21 @@ int main () {
         .colormap = XCreateColormap (display, root_window, visual->visual, AllocNone),
         .event_mask = StructureNotifyMask | KeyPressMask | KeyReleaseMask | FocusChangeMask | PointerMotionMask | ButtonPressMask | ButtonReleaseMask,
     };
-    const auto xwindow = XCreateWindow(display, root_window, 0, 0, window.w, window.h, 0, visual->depth, 0, visual->visual, CWBackPixel | CWColormap | CWEventMask, &attributes);
+    const auto xwindow = XCreateWindow(display, root_window, 0, 0, window.w, window.h, 0, visual->depth, InputOutput, visual->visual, CWBackPixel | CWColormap | CWEventMask, &attributes);
+
+    #define WINDOW_TITLE "Golden Path"
+    XChangeProperty (display, xwindow, XInternAtom (display, "_NET_WM_NAME", False), XInternAtom (display, "UTF8_STRING", False), 8, 0, (const unsigned char*)WINDOW_TITLE, sizeof (WINDOW_TITLE)-1);
+
+    Atom WM_DELETE_WINDOW = XInternAtom (display, "WM_DELETE_WINDOW", False);
+    { const auto result = XSetWMProtocols (display, xwindow, &WM_DELETE_WINDOW, 1); assert (result); }
+
+    XMapWindow (display, xwindow);
+    XFlush (display);
 
     { const auto result = glXMakeCurrent (display, xwindow, gl_context); assert (result); }
 
     printf ("OpenGL version: %s\n", (const char*)glGetString (GL_VERSION));
 
-    XMapWindow (display, xwindow);
-    XFlush (display);
-
-    #define WINDOW_TITLE "Golden Path"
-    XChangeProperty (display, xwindow, XA_WM_NAME, XA_STRING, 8, 0, (const unsigned char*)WINDOW_TITLE, sizeof (WINDOW_TITLE)-1);
-
-    Atom WM_DELETE_WINDOW = XInternAtom (display, "WM_DELETE_WINDOW", False);
-    if (WM_DELETE_WINDOW != None)
-        { const auto result = XSetWMProtocols (display, xwindow, &WM_DELETE_WINDOW, 1); assert (result); }
-    
     OnResize ();
     glClearColor (0, 0, 0, 0);
 
@@ -66,14 +65,14 @@ int main () {
                 } break;
 
                 case ClientMessage: {
-                    const auto c = (XClientMessageEvent*)&e;
-                    if (WM_DELETE_WINDOW && (Atom)c->data.l[0] == WM_DELETE_WINDOW) {
+                    const auto c = &e.xclient;
+                    if ((Atom)c->data.l[0] == WM_DELETE_WINDOW) {
                         quit = true;
                     }
                 } break;
 
                 case ConfigureNotify: {
-                    const auto c = (XConfigureEvent*)&e;
+                    const auto c = &e.xconfigure;
                     if (c->width != window.w || c->height != window.h) {
                         window.w = c->width;
                         window.h = c->height;

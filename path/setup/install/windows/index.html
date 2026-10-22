@@ -21,13 +21,30 @@
     <h3 id="winget">WinGet</h3>
     <p>Open a <b>Powershell</b> window (NOT cmd). Enter the following command:</p>
     <code>winget install BrechtSanders.WinLibs.POSIX.UCRT Git.Git</code>
-    <p>If the above works, great! Now <a href="#verify">verify with the commands at the bottom of the page.</a> If it didn't work, you can install things manually...</p>
+
+    <p>If the above works, great! Now <a href="#verify">verify with the commands at the bottom of the page.</a></p>
+
+    <p>If you get stuck on "Extracting archive..." for more than 30 seconds, you can change how WinGet extracts archives:</p>
+    <ul>
+        <li>Press CTRL+C to cancel the current operation</li>
+        <li>Type "winget settings" and hit enter. The settings.json file will open in your default editor</li>
+        <li>Delete the file contents and copy-paste the below:</li>
+    </ul>
+    <code>{
+    "$schema": "https://aka.ms/winget-settings.schema.json",
+    "installBehavior": {
+        "archiveExtractionMethod": "tar"
+    }
+}</code>
+    <p>Save the file, then repeat the winget install command above.</p>
+
+    <p>If you can't install with Winget, you can install things manually...</p>
 
     <h3 id="manual">Manual Installation</h3>
     <ol>
         <li>Visit this URL: <a href="https://winlibs.com/#download-release" target="_blank">WinLibs.com/#download-release</a></li>
         <li>Download the latest Win64 release - it should have POSIX threads, UCRT.
-        <br/><img src="assets/download.webp" style="margin-top:.3em;" /><br/></li>
+        <br/><img src="assets/download.webp" style="margin-top:.3em; max-width:100%;" /><br/></li>
         <li>Open the downloaded file. It should contain a single folder, called "mingw64". Extract that folder to a place of your choosing - I recommend the root of your main drive (C: in most cases).</li>
         <li>Test that the downloaded GCC works by opening a Powershell window and type the following command (change the directory if you used something different):
             <code>C:/mingw64/bin/gcc.exe --version</code>
@@ -39,17 +56,18 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.</cod
         </li>
         <li>In the Windows search bar, type "env" and select "Edit the system environment variables."</li>
         <li>Click "Environment Variables."
-            <br/><img src="assets/environment variables.webp" style="margin-top:.3em;" />
+            <br/><img src="assets/environment variables.webp" style="margin-top:.3em; max-width:100%;" />
         </li>
         <li>Select "Path" and click the "Edit..." button.<br/>
-            <img src="assets/edit path.webp" style="margin-top:.3em;" />
+            <img src="assets/edit path.webp" style="margin-top:.3em; max-width:100%;" />
         </li>
         <li>Click "New" and copy-paste the full directory containing gcc.exe - if you copied the mingw64 folder to the root of your C: drive, this will be "C:/mingw64/bin"</li>
         <li>Click OK on each window to close them.</li>
         <li>Close any open Powershell windows and open a new one. Type:
             <code>gcc --version</code>
-        </li
+        </li>
     </ol>
+
     <p>If you got the same output as before when you typed the full directory, then MinGW is installed correctly. Lastly, we need Git.</p>
     <ol>
         <li>Visit the <a href="https://gitforwindows.org/" target="_blank">GitForWindows.org</a> website and download the installer.</li>

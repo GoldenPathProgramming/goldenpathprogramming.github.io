@@ -36,7 +36,7 @@ int main () {
     [app setDelegate:delegate];
     [window setDelegate:delegate];
 
-    if (@available(macOS 14.0, *)) [(id)app activate];
+    if ([app respondsToSelector:@selector(activate)]) [(id)app activate];
     else [app activateIgnoringOtherApps:true];
 
     while (!quit) {

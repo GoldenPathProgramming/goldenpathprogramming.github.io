@@ -29,9 +29,9 @@
     <hr/>
 
     <code>int main () {
-        DO_OR_QUIT (CoInitializeEx(NULL, COINIT_MULTITHREADED), "Sound thread failed to CoInitializeEx");
-        
-        { DWORD task_index = 0; AvSetMmThreadCharacteristics(TEXT("Pro Audio"), &task_index); }</code>
+    DO_OR_QUIT (CoInitializeEx(NULL, COINIT_MULTITHREADED), "Sound thread failed to CoInitializeEx");
+    
+    { DWORD task_index = 0; AvSetMmThreadCharacteristics(TEXT("Pro Audio"), &task_index); }</code>
     <p>XAudio2 relies on the Windows COM library, which must be initialized (and before closing, uninitialized). We set the thread priority to "Pro Audio". "Games" is another option, but Pro Audio guarantees lower latency if available, and higher priority over other threads.</p>
 
     <code>    while (restart_audio && !quit) {</code>
@@ -63,13 +63,14 @@ public:
     void OnProcessingPassEnd() {}
     void OnProcessingPassStart() {}
 };
+
 VoiceCallback xaudio_voice_callback;
 
         DO_OR_RESTART (xaudio->RegisterForCallbacks(&xaudio_engine_callback), "Failed to register for engine callbacks");</code>
     <p>We create a class inheriting IXAudio2EngineCallback to implement the engine callback functions. The only one we're interested in is OnCriticalError. We print the error and flag the whole audio system to restart.</p>
 
     <code>        DO_OR_RESTART (xaudio->CreateMasteringVoice(&xaudio_master_voice, 1, SAMPLING_RATE, 0, NULL, NULL, AudioCategory_GameEffects), "Failed to create mastering voice");</code>
-    <p>XAudio2 uses multiple source voices, then mixes them with one mastering voice. The mastering voice need to be configured with the number of channels, sampling rate, and has a few other settings. Check the documentation for all possible values.</p>
+    <p>XAudio2 uses multiple source voices, then mixes them with one mastering voice. The mastering voice needs to be configured with the number of channels, sampling rate, and has a few other settings. Check the documentation for all possible values.</p>
 
     <code>const WAVEFORMATEX wave_format = {
     .wFormatTag = WAVE_FORMAT_IEEE_FLOAT,
@@ -98,7 +99,7 @@ VoiceCallback xaudio_voice_callback;
 
     <code>class VoiceCallback : public IXAudio2VoiceCallback {
 public:
-    void OnBufferEnd(void* pBufferContext) override {
+    void OnBufferEnd (void* pBufferContext) override {
         static bool sample_buffer_swap = 0;
         float *data = audio_buffers[sample_buffer_swap];
         for (int i = 0; i < PERIOD_SIZE; ++i) {
@@ -108,7 +109,7 @@ public:
             *data++ = sample;
         }
         xaudio_source_voice->SubmitSourceBuffer (&xaudio_buffers[sample_buffer_swap], nullptr);
-        sample_buffer_swap = !sample_buffer_swap;;
+        sample_buffer_swap = !sample_buffer_swap;
     }
 
     void OnStreamEnd() {}
@@ -121,10 +122,12 @@ public:
         LOG ("Critical XAudio2 voice error [%lx] [%s]", Error, HResultToStr(Error));
     }
 };</code>
-    <p>To pass the voice callbacks to XAudio2, we inherit from the IXAudio2VoiceCallback class and implement all the callback functions. We just need to handle errors by restarting the audio, and pass new data in OnBufferEnd. Depending on the complexity of your audio generation, you may not want to delay sending a buffer to generate it here. For a simple square wave, though, this works just fine.</p>
+    <p>To pass the voice callbacks to XAudio2, we inherit from the IXAudio2VoiceCallback class and implement all the callback functions. We just need to handle errors by restarting the audio, and pass new data in OnBufferEnd. Depending on the complexity of your audio generation, you may not want to delay sending a buffer by generating it here. Rather, you may generate your audio samples either *after* sending a buffer, or you may generate them in a separate thread. For a simple square wave, though, this works just fine.</p>
 
     <code>        while (!quit && !restart_audio) {</code>
     <p>This section just loops to keep the program alive, and provides a console-based input for testing the program - up/down arrow keys to change frequency, and q/k/escape to quit. The actual audio processing won't happen on this thread - XAudio2 will start its own threads for that and use our provided callbacks.</p>
+
+    <p>If you run this on a desktop PC, the latency should appear nonexistent. Press up or down, and hear the frequency change immediately. However, if you run this on a laptop, you may notice around 200ms of latency. This seems to be due to Windows optimizing for battery life. On some laptops, latency disappears when plugged in to power, or when switched to performance mode. Other laptops have latency no matter what. On these systems, I've run other programs to compare audio latency and found that it is a system-wide issue, not an issue with the code. That said, if you discover a way to lower audio latency on battery-powered laptops, please let me know!</p>
 
     <script src="/scripts/prev-next-step.js" path_prev="../../opengl/windows/" path_next="/#oasis1" label_next="Continue the Path"></script>
 

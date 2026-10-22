@@ -15,7 +15,7 @@
 #define WGL_CONTEXT_CORE_PROFILE_BIT_ARB        0x00000001
 #define WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB 0x00000002
 
-typedef HGLRC (*wglCreateContextAttribsARB_t) (HDC hDC, HGLRC hshareContext, const int *attribList); wglCreateContextAttribsARB_t wglCreateContextAttribsARB;
+typedef HGLRC (WINAPI *wglCreateContextAttribsARB_t) (HDC hDC, HGLRC hshareContext, const int *attribList); wglCreateContextAttribsARB_t wglCreateContextAttribsARB;
 
 int main() {
     const wchar_t window_class_name[] = L"Window Class";

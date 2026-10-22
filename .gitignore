@@ -6,3 +6,4 @@ a.exe
 *a.out.yml
 dev/
 a.out.dSYM
+compile_commands.json

@@ -31,21 +31,31 @@
     <code>clang main.m -std=gnu2y -framework Cocoa -framework OpenGL</code>
     <hr/>
 
-    <code>    const char *gl_extensions = (const char*)glGetString (GL_EXTENSIONS);</code>
-    <p>OpenGL provides us a list of all available extensions in the form of a space-separated string. Feel free to read through some of the GL extensions your context reports. This works in all OpenGL context versions, but if your context is 3.0 or later, you can also retrieve the number of extensions with glGetIntegerv (GL_NUM_EXTENSIONS, &extension_count) then iterate each extension as an individual string with glGetStringi (GL_EXTENSIONS, i).</p>
+    <code>bool GLHasExtensionPre30 (const char *const extension) {
+    const char *gl_extensions = (const char*)glGetString (GL_EXTENSIONS);
 
-    <code>bool GLHasExtension (const char *const haystack, const char *const needle) {
-    const char *e = haystack;
-    const size_t len = strlen (needle);
+    const size_t len = strlen (extension);
     for (;;) {
-        e = strstr (e, needle);
-        if (e == NULL) return false;
-        char next = *(e + len);
+        gl_extensions = strstr (gl_extensions, extension);
+        if (gl_extensions == NULL) return false;
+        char next = *(gl_extensions + len);
         if (next == ' ' || next == '\0') return true;
-        e += len;
+        gl_extensions += len;
     }
+    return false;
+}
+
+bool GLHasExtension30Plus (const char *const extension) {
+    GLint extension_count; 
+    glGetIntegerv (GL_NUM_EXTENSIONS, &extension_count);
+
+    for (int i = 0; i < extension_count; ++i) {
+        const GLubyte *e = glGetStringi (GL_EXTENSIONS, i);
+        if (strcmp ((const char*)e, extension) == 0) return true;
+    }
+    return false;
 }</code>
-    <p>This function searches for the given extension in an extension string. It's important to check that the found extension is followed by a space or NULL, because some extensions have the same name as another extension, with additional text added on, eg. GL_ARB_shadow and GL_ARB_shadow_ambient. On all of my systems, every extension in the string, including the last, is followed by a space, so I could just check for the extension followed by a space to eliminate the need to check the next character. But according to <a href="https://developer.download.nvidia.com/assets/gamedev/docs/extensions.pdf" target="_blank">this nVidia document, page 6</a>, the last extension may not have a space and may just be NULL-terminated.</p>
+    <p>OpenGL 2.1 provides us a list of all available extensions in the form of a space-separated string. Feel free to read through some of the GL extensions your context reports. This was deprecated in 3.0, and replaced with glGetStringi to retrieve each extension as its own, separate string. Depending on what version of OpenGL you're targetting, you should use one method or the other.</p>
 
     <code>    NSOpenGLPixelFormatAttribute gl_attributes[] = {
         NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersionLegacy,
@@ -62,7 +72,7 @@
     void *gldll = dlopen ("/System/Library/Frameworks/OpenGL.framework/OpenGL", RTLD_LAZY);</code>
     <p>We used to be able to use NSLookupAndBindSymbol to find dynamic symbols, but Apple has deprecated it. Now, this is the standard way of loading OpenGL extension functions. dlfcn is the POSIX library used for dynamic linking. Here we open the OpenGL dynamic library, from which we will be retrieving GL extension functions.</p>
 
-    <code>    if (GLHasExtension (gl_extensions, "GL_ARB_vertex_buffer_object")) {
+    <code>    if (GLHasExtension ("GL_ARB_vertex_buffer_object")) {
         do {
             typedef void (*glGenBuffersARB_t) (GLsizei n, GLuint *buffers);
 
@@ -83,7 +93,7 @@
 
     <p>The above code works for retrieving any GL extension functions. However, if you find you need to repeat the above code a lot to retrieve a lot of extensions, you might use a library such as <a href="https://github.com/nigels-com/glew" target="_blank">GLEW</a> or <a href="https://gen.glad.sh/" target="_blank">Glad</a>, or generate your code for loading many extensions.</p>
 
-    <script src="/scripts/prev-next-step.js" path_next="/#oasis0" label_next="Back to the Path"></script>
+    <script src="/scripts/prev-next-step.js" path_next="/#oasis1" label_next="Back to the Path"></script>
 
     <script src="/scripts/footer.js"></script>
 </body>

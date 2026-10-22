@@ -35,25 +35,36 @@
     Atom actual_type;
     int actual_format;
     unsigned long nitems;
-    unsigned long bytes_after;
+    unsigned long bytes_after = 1;
+    long offset = 0;
     Atom *prop;
-    
-    const auto result = XGetWindowProperty(display, window, atoms.wm_state, 0, 1024, False, XA_ATOM, &actual_type, &actual_format, &nitems, &bytes_after, (unsigned char **)&prop);
-
-    if (result != Success || actual_type != XA_ATOM || actual_format != 32) return false;
-
     bool is_fullscreen = false;
-    for (unsigned long i = 0; i < nitems; ++i) {
-        if (prop[i] == atoms.fullscreen) {
-            is_fullscreen = true;
-            break;
-        }
-    }
+    
+    while (bytes_after && !is_fullscreen) {
+        const auto result = XGetWindowProperty(display, window, atoms.wm_state, offset, 1024, False, XA_ATOM, &actual_type, &actual_format, &nitems, &bytes_after, (unsigned char **)&prop);
 
-    XFree (prop);
+        if (result != Success) return false;
+        
+        if (actual_type != XA_ATOM || actual_format != 32) {
+            XFree (prop);
+            return false;
+        }
+
+        for (unsigned long i = 0; i &lt; nitems; ++i) {
+            if (prop[i] == atoms.fullscreen) {
+                is_fullscreen = true;
+                break;
+            }
+        }
+
+        XFree (prop);
+
+        offset += nitems; // nitems guaranteed to be 32, because of check above
+    }
     return is_fullscreen;
 }</code>
     <p>We use XGetWindowProperty to retrieve the data associated with the _NET_WM_STATE atom. In the case of _NET_WM_STATE, this is an array of Atoms representing various window properties, such as: fullscreen, maximized (vertically/horizontally), focused, and more. If a given atom is present in this array, the property is enabled. If the atom is not present, that property is disabled.</p>
+    <p>XGetWindowProperty is a pretty annoying function. It allocates the memory (prop) in which it stores the properties we request, but we must tell it how much memory it's allowed to allocate. As far as I know, there is no way to tell it to just allocate as much as required. I suppose this is to prevent the X server from allocating a terabyte for properties, but it's still annoying. So, we must check bytes_after_return, and call this function in a loop until we've read all available properties. Read the documentation for this function if you want to know more.</p>
 
     <code>void ToggleFullscreen () {
     bool go_fullscreen = !IsFullscreen ();

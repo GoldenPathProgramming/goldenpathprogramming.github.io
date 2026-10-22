@@ -35,6 +35,7 @@ int main() {
     if (!simple) {
         printf ("Failed to initialize PulseAudio: %s\n", pa_strerror(pulse_error));
         assert (false);
+        return 1;
     }
 
     struct termios settings_new, settings_old;

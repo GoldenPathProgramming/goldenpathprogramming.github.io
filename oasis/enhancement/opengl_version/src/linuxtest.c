@@ -4,7 +4,7 @@
 #include <string.h>
 
 static struct {
-    int16_t w, h;
+    int32_t w, h;
 } window = {.w = 640, .h = 480};
 
 typedef union {

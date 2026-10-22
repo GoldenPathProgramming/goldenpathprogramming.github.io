@@ -32,7 +32,7 @@
     { const auto result = wglMakeCurrent (window_context, gl_context_temp); assert (result); }</code>
     <p>You may be surprised to see that we're creating a context without specifying the version! In order to use the GL function required to create a specific context version, we need to already have a valid OpenGL context, so we create one the non-specific way initially.</p>
 
-    <code>typedef HGLRC (*wglCreateContextAttribsARB_t) (HDC hDC, HGLRC hshareContext, const int *attribList); wglCreateContextAttribsARB_t wglCreateContextAttribsARB;
+    <code>typedef HGLRC (WINAPI *wglCreateContextAttribsARB_t) (HDC hDC, HGLRC hshareContext, const int *attribList); wglCreateContextAttribsARB_t wglCreateContextAttribsARB;
 
     wglCreateContextAttribsARB = (wglCreateContextAttribsARB_t)wglGetProcAddress ((LPCSTR)"wglCreateContextAttribsARB"); assert (wglCreateContextAttribsARB);</code>
     <p>We can't link to wglCreateContextAttribsARB in the normal way, since it may or may not be present depending on the GPU driver. Instead, we have to retrieve a pointer to the function with glXGetProcAddress. When retrieving OpenGL functions, I like to create a typedef of the function pointer type.</p>

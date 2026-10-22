@@ -44,9 +44,7 @@ int main() {
     while (!quit) {
         MSG message;
         while (PeekMessage (&message, NULL, 0, 0, PM_REMOVE)) {
-            if (message.message == WM_QUIT) {
-                quit = true;
-            }
+            if (message.message == WM_QUIT) quit = true;
             else DispatchMessage (&message);
         }
         

@@ -41,9 +41,6 @@
     XVisualInfo* visual = glXGetVisualFromFBConfig(display, fb_config); assert(visual);</code>
     <p>gl_attributes and glXChooseVisual have been replaced with fb_attributes, glXChooseFBConfig and glXGetVisualFromFBConfig. These are needed to get a frame buffer configuration for use later when specifying the OpenGL context version. For a list of fb_attributes options, see the glXChooseFBConfig specification.</p>
 
-    <code>    auto gl_context_temp = glXCreateContext (display, visual, 0, true); assert (gl_context_temp);</code>
-    <p>You may be surprised to see that we're creating a context without specifying the version! In order to use the GL functions required to create a specific context version, we need to already have a valid OpenGL context, so we create one the non-specific way initially.</p>
-
     <code>typedef GLXContext (*glXCreateContextAttribsARB_t) (Display *dpy, GLXFBConfig config, GLXContext share_context, Bool direct, const int *attrib_list); glXCreateContextAttribsARB_t glXCreateContextAttribsARB;
 
     glXCreateContextAttribsARB = (glXCreateContextAttribsARB_t)glXGetProcAddress ((const GLubyte*)"glXCreateContextAttribsARB"); assert (glXCreateContextAttribsARB);</code>

@@ -57,6 +57,7 @@
             glLoadIdentity ();
          } break;</code>
     <p>Whenever the window is resized, we reset the OpenGL viewport. When you first call wglMakeCurrent, the viewport is set to the area of the window, but it doesn't automatically update after that. Here's also where you'll usually set up your projection matrix, which tells OpenGL how to mathematically translate from rendering coordinates to screen coordinates.</p>
+    <p>Note: Windows usually sends several messages, including WM_SIZE, and directly calls our window procedure right after window creation, before we've created an OpenGL context. That being the case, we'll hit this GL code in WM_SIZE too early the first time. Thankfully, this won't cause any problems, as these GL calls will just be ignored if we haven't set up a context yet: <a href="https://learn.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-wglmakecurrent" target="_blank">"A thread must set a current rendering context before calling any OpenGL functions. Otherwise, all OpenGL calls are ignored."</a></p>
 
     <code>    glClearColor (0, 0, 0, 0);</code>
     <p>You can tell OGL what value to use for clearing - try changing these values.</p>

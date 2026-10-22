@@ -25,14 +25,12 @@ int main () {
 
     XVisualInfo* visual = glXGetVisualFromFBConfig(display, fb_config); assert(visual);
 
-    auto gl_context_temp = glXCreateContext (display, visual, 0, true); assert (gl_context_temp);
-
     XSetWindowAttributes attributes = {
         .background_pixel = 0x403a4d,
         .colormap = XCreateColormap (display, root_window, visual->visual, AllocNone),
         .event_mask = StructureNotifyMask | KeyPressMask | KeyReleaseMask | FocusChangeMask | PointerMotionMask | ButtonPressMask | ButtonReleaseMask,
     };
-    const auto xwindow = XCreateWindow(display, root_window, 0, 0, 640, 480, 0, visual->depth, 0, visual->visual, CWBackPixel | CWColormap | CWEventMask, &attributes);
+    const auto xwindow = XCreateWindow(display, root_window, 0, 0, 640, 480, 0, visual->depth, InputOutput, visual->visual, CWBackPixel | CWColormap | CWEventMask, &attributes);
     
     glXCreateContextAttribsARB = (glXCreateContextAttribsARB_t)glXGetProcAddress ((const GLubyte*)"glXCreateContextAttribsARB"); assert (glXCreateContextAttribsARB);
 
@@ -47,8 +45,6 @@ int main () {
     const auto gl_context = glXCreateContextAttribsARB (display, fb_config, 0, True, context_attributes); assert(gl_context);
 
     { const auto result = glXMakeCurrent (display, xwindow, gl_context); assert (result); }
-
-    glXDestroyContext (display, gl_context_temp);
 
     printf ("OpenGL version: %s\n", (const char*)glGetString (GL_VERSION));
 

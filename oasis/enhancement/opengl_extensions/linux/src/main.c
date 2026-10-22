@@ -3,25 +3,64 @@
 #include <stdio.h>
 #include <string.h>
 
+Display *display;
+
 typedef union {
     struct { uint8_t major, minor; };
     uint16_t full;
 } glversion_t;
 
-bool GLHasExtension (const char *const haystack, const char *const needle) {
-    const char *e = haystack;
-    const auto len = strlen (needle);
+bool GLHasExtensionPre30 (const char *const extension) {
+    const char *gl_extensions = (const char*)glGetString (GL_EXTENSIONS);
+
+    const auto len = strlen (extension);
     for (;;) {
-        e = strstr (e, needle);
-        if (e == NULL) return false;
-        char next = *(e + len);
+        gl_extensions = strstr (gl_extensions, extension);
+        if (gl_extensions == NULL) return false;
+        char next = *(gl_extensions + len);
         if (next == ' ' || next == '\0') return true;
-        e += len;
+        gl_extensions += len;
     }
+    return false;
+}
+
+bool GLHasExtension30Plus (const char *const extension) {
+    typedef const GLubyte* (*glGetStringi_t) (GLenum name, GLuint index);
+
+    const auto glGetStringi = (glGetStringi_t)glXGetProcAddress ((const GLubyte*)"glGetStringi");
+    if (glGetStringi == NULL) {
+        puts ("Failed to retrieve glGetStringi function pointer");
+        return false;
+    }
+
+    GLint extension_count; 
+    glGetIntegerv (GL_NUM_EXTENSIONS, &extension_count);
+
+    for (int i = 0; i < extension_count; ++i) {
+        const auto e = glGetStringi (GL_EXTENSIONS, i);
+        if (strcmp ((const char*)e, extension) == 0) return true;
+    }
+    return false;
+}
+
+bool (*GLHasExtension) (const char *const extension) = GLHasExtension30Plus;
+
+bool GLXHasExtension (const char *const extension) {
+    const char *glx_extensions = glXQueryExtensionsString (display, DefaultScreen (display));
+
+    const auto len = strlen (extension);
+    for (;;) {
+        glx_extensions = strstr (glx_extensions, extension);
+        if (glx_extensions == NULL) return false;
+        char next = *(glx_extensions + len);
+        if (next == ' ' || next == '\0') return true;
+        glx_extensions += len;
+    }
+    return false;
 }
 
 int main () {
-    const auto display = XOpenDisplay (NULL);
+    display = XOpenDisplay (NULL);
     assert (display);
 
     const auto root_window = DefaultRootWindow(display);
@@ -42,18 +81,12 @@ int main () {
         .colormap = XCreateColormap (display, root_window, visual->visual, AllocNone),
         .event_mask = StructureNotifyMask | KeyPressMask | KeyReleaseMask | FocusChangeMask | PointerMotionMask | ButtonPressMask | ButtonReleaseMask,
     };
-    const auto xwindow = XCreateWindow(display, root_window, 0, 0, 800, 600, 0, visual->depth, 0, visual->visual, CWBackPixel | CWColormap | CWEventMask, &attributes);
+    const auto xwindow = XCreateWindow(display, root_window, 0, 0, 800, 600, 0, visual->depth, InputOutput, visual->visual, CWBackPixel | CWColormap | CWEventMask, &attributes);
 
     { const auto result = glXMakeCurrent (display, xwindow, gl_context); assert (result); }
 
     const char *gl_version = (const char*)glGetString (GL_VERSION);
     printf ("OpenGL version: %s\n", gl_version);
-
-    const char *gl_extensions = (const char*)glGetString (GL_EXTENSIONS);
-    printf ("\nGL extensions: %s\n\n", gl_extensions);
-
-    const char *glx_extensions = glXQueryExtensionsString (display,0);
-    printf ("\nGLX extensions: %s\n\n", glx_extensions);
 
     glversion_t glversion = {.major = gl_version[0] - '0', .minor = gl_version[2] - '0'};
     bool glversion_compatibility = true;
@@ -63,7 +96,12 @@ int main () {
         if (!(context_profile & GL_CONTEXT_COMPATIBILITY_PROFILE_BIT)) glversion_compatibility = false;
     }
     else if (glversion.full == (glversion_t){.major=3,.minor=1}.full) { // Version 3.1 removed deprecated functionality, but did not have profiles yet.
-        if (!GLHasExtension(gl_extensions, "GL_ARB_compatibility")) glversion_compatibility = false;
+        if (!GLHasExtension("GL_ARB_compatibility")) glversion_compatibility = false;
+    }
+
+    if (glversion.major < 3) {
+        GLHasExtension = GLHasExtensionPre30;
+        puts ("Using legacy glGetString for extensions");
     }
 
     while (glversion.full >= (glversion_t){.major = 2, .minor = 0}.full && glversion_compatibility) {
@@ -79,7 +117,7 @@ int main () {
         printf ("glCreateShader found and called: %u\n", vertex_shader);
     break;}
 
-    if (GLHasExtension (gl_extensions, "GL_ARB_vertex_buffer_object")) {
+    if (GLHasExtension ("GL_ARB_vertex_buffer_object")) {
         do {
             typedef void (*glGenBuffersARB_t) (GLsizei n, GLuint *buffers);
 
@@ -91,12 +129,12 @@ int main () {
 
             GLuint buffer = 0;
             glGenBuffersARB (1, &buffer);
-            printf ("glGenBuffersARB found and called: %d\n", buffer);
+            printf ("glGenBuffersARB found and called: %u\n", buffer);
         } while (false);
     }
     else puts ("Extension not found: GL_ARB_vertex_buffer_object");
 
-    if (GLHasExtension (glx_extensions, "GLX_EXT_swap_control_tear")) {
+    if (GLXHasExtension ("GLX_EXT_swap_control_tear")) {
         do {
             typedef void (*glXSwapIntervalEXT_t)(Display *dpy, GLXDrawable drawable, int interval);
 

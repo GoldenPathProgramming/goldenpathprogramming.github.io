@@ -91,7 +91,7 @@ int main () {
     NSTrackingArea *tracking_area = [[NSTrackingArea alloc] initWithRect:content_view.bounds options:NSTrackingMouseEnteredAndExited | NSTrackingMouseMoved | NSTrackingActiveAlways | NSTrackingInVisibleRect | NSTrackingEnabledDuringMouseDrag owner:[window delegate] userInfo:nil];
     [content_view addTrackingArea:tracking_area];
 
-    if (@available(macOS 14.0, *)) [(id)app activate];
+    if ([app respondsToSelector:@selector(activate)]) [(id)app activate];
     else [app activateIgnoringOtherApps:true];
 
     while (!quit) {

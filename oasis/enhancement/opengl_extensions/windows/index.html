@@ -32,26 +32,46 @@
     <code>gcc main.c -lgdi32 -lopengl32</code>
     <hr/>
 
-    <code>    const char *gl_extensions = (const char*)glGetString (GL_EXTENSIONS);
-        const char *wgl_extensions = gl_extensions;
-    
-        typedef const char* (*wglGetExtensionsStringEXT_t) (void);
-        const auto wglGetExtensionsStringEXT = (wglGetExtensionsStringEXT_t)wglGetProcAddress ("wglGetExtensionsStringEXT");
-        if (wglGetExtensionsStringEXT) wgl_extensions = wglGetExtensionsStringEXT ();</code>
-    <p>OpenGL provides us a list of all available extensions in the form of a space-separated string. WGL extensions were originally presented in the same string, but subsequently sequestered to their own string. Since the function to get the WGL extensions string is itself an extension, we need to query for the function pointer first, then call the function. In case the function is not available, we default the wgl_extensions to also point to the gl_extensions string, since WGL extensions were reported in there before wglGetExtensionsStringEXT was added. Feel free to read through some of the GL/WGL extensions your context reports. This works in all OpenGL context versions, but if your context is 3.0 or later, you can also retrieve the number of extensions with glGetIntegerv (GL_NUM_EXTENSIONS, &extension_count) then iterate each extension as an individual string with glGetStringi (GL_EXTENSIONS, i).</p>
+    <code>bool GLHasExtensionPre30 (const char *const extension) {
+    const char *gl_extensions = (const char*)glGetString (GL_EXTENSIONS);
 
-    <code>bool GLHasExtension (const char *const haystack, const char *const needle) {
-    const char *e = haystack;
-    const auto len = strlen (needle);
+    const auto len = strlen (extension);
     for (;;) {
-        e = strstr (e, needle);
-        if (e == NULL) return false;
-        char next = *(e + len);
+        gl_extensions = strstr (gl_extensions, extension);
+        if (gl_extensions == NULL) return false;
+        char next = *(gl_extensions + len);
         if (next == ' ' || next == '\0') return true;
-        e += len;
+        gl_extensions += len;
     }
-}</code>
-    <p>This function searches for the given extension in an extension string. It's important to check that the found extension is followed by a space or NULL, because some extensions have the same name as another extension, with additional text added on, eg. WGL_EXT_swap_control and WGL_EXT_swap_control_tear. On all of my systems, every extension in the string, including the last, is followed by a space, so I could just check for the extension followed by a space to eliminate the need to check the next character. But according to <a href="https://developer.download.nvidia.com/assets/gamedev/docs/extensions.pdf" target="_blank">this nVidia document, page 6</a>, the last extension may not have a space and may just be NULL-terminated.</p>
+    return false;
+}
+
+bool GLHasExtension30Plus (const char *const extension) {
+    typedef const GLubyte* (*glGetStringi_t) (GLenum name, GLuint index);
+
+    const auto glGetStringi = (glGetStringi_t)wglGetProcAddress ((const GLubyte*)"glGetStringi");
+    if (glGetStringi == NULL) {
+        puts ("Failed to retrieve glGetStringi function pointer");
+        return false;
+    }
+
+    GLint extension_count; 
+    glGetIntegerv (GL_NUM_EXTENSIONS, &extension_count);
+
+    for (int i = 0; i < extension_count; ++i) {
+        const auto e = glGetStringi (GL_EXTENSIONS, i);
+        if (strcmp ((const char*)e, extension) == 0) return true;
+    }
+    return false;
+}
+
+bool (*GLHasExtension) (const char *const extension) = GLHasExtension30Plus;
+
+    if (glversion.major < 3) {
+        GLHasExtension = GLHasExtensionPre30;
+        puts ("Using legacy glGetString for extensions");
+    }</code>
+    <p>Before OpenGL 3.0, the only way to get the list of available extensions was using glGetString to retrieve a space-separated list of all available extensions in the context. This mechanism was <a href="https://registry.khronos.org/OpenGL/specs/gl/glspec30.pdf#page=426" target="_blank">deprecated in GL 3.0</a>, and won't work in forward-compatible contexts. Therefore, if in a 3.0+ context, it's best to use the new glGetStringi method which provides each extension as its own string. This method also makes it easier to check for an exact string match. I've used a function pointer to provide a transparent interface to these two functions, which is assigned to the older version only if the context is pre-3.0.</p>
 
     <code>    while (glversion.full >= (glversion_t){.major = 2, .minor = 0}.full && glversion_compatibility) {
         typedef GLuint (*glCreateShader_t) (GLenum shaderType);
@@ -69,7 +89,7 @@
 
     <p>When retrieving a function that is part of a specific OpenGL version specification, you can just check that your context is a compatible version and then retrieve the function pointer. Given this, if you know all of your GL functions are from version 2.1 and earlier, for example, you can do a single check for the version, then retrieve all the functions pointers.</p>
 
-    <code>    if (GLHasExtension (gl_extensions, "GL_ARB_vertex_buffer_object")) {
+    <code>    if (GLHasExtension ("GL_ARB_vertex_buffer_object")) {
         do {
             typedef void (*glGenBuffersARB_t) (GLsizei n, GLuint *buffers);
 
@@ -81,16 +101,16 @@
 
             GLuint buffer = 0;
             glGenBuffersARB (1, &buffer);
-            printf ("glGenBuffersARB found and called: %d\n", buffer);
+            printf ("glGenBuffersARB found and called: %u\n", buffer);
         } while (false);
     }</code>
     <p>Here we check for the extension, GL_ARB_vertex_buffer_object, then get the function pointer for glGenBuffersARB. Pretty much the same as for glCreateShader, except it's an extension function, not an OpenGL core specification function.</p>
 
-    <code>    if (GLHasExtension (wgl_extensions, "WGL_EXT_swap_control_tear")) {
+    <code>    if (WGLHasExtension ("WGL_EXT_swap_control_tear")) {
         do {
             typedef BOOL (*wglSwapIntervalEXT_t) (int interval);
 
-            const auto wglSwapIntervalEXT = (wglSwapIntervalEXT_t)wglGetProcAddress((const GLubyte*)"wglSwapIntervalEXT");
+            const auto wglSwapIntervalEXT = (wglSwapIntervalEXT_t)wglGetProcAddress ((const GLubyte*)"wglSwapIntervalEXT");
             if (wglSwapIntervalEXT == NULL) {
                 puts ("Failed to retrieve wglSwapIntervalEXT function pointer");
                 break;
@@ -99,13 +119,13 @@
             puts ("wglSwapIntervalEXT found and called");
         } while (false);
     }</code>
-    <p>Note that since we're checking for a WGL extension, we pass the wgl_extensions string to GLHasExtension. Other than that, this is practically the same as the prior code.</p>
+    <p>Note that we call WGLHasExtension. Other than that, this is practically the same as the prior code.</p>
 
     <p>You may wonder: why check for the version/extension at all? Why not just attempt to retrieve the function pointer without checking those things? In many cases that will work, but wglSwapIntervalEXT is a good example of why it is sometimes necessary to check for the relevant extension first. You see, wglSwapIntervalEXT is included in two different extensions: WGL_EXT_swap_control, and WGL_EXT_swap_control_tear. If the _tear extension is present, you can call wglSwapIntervalEXT with a -1 interval value in order to allow tearing when the framerate dips below the vertical sync rate. But when only the non-tear extension is present, the function fails when called with a negative value.</p>
 
     <p>The above code works for retrieving any GL and WGL functions not included in the Windows SDK. In my game engine, I use fewer than 20 such functions, so I just created a simple macro and called it once for each function. If you're using more functions than that, or want to retrieve everything up to a particular version of OpenGL, you might use a library such as <a href="https://github.com/nigels-com/glew" target="_blank">GLEW</a> or <a href="https://gen.glad.sh/" target="_blank">Glad</a>, or you could download the <a href="https://cvs.khronos.org/svn/repos/ogl/trunk/doc/registry/public/api/gl.xml" target="_blank">OpenGL API registry XML</a> and <a href="https://github.com/KhronosGroup/OpenGL-Registry/blob/main/xml/wgl.xml" target="_blank">WGL API registry XML</a>, and write a program to parse them and generate your own code for loading extensions. This is what I plan to do whenever I use more OpenGL in my next engine.</p>
 
-    <script src="/scripts/prev-next-step.js" path_next="/#oasis0" label_next="Back to the Path"></script>
+    <script src="/scripts/prev-next-step.js" path_next="/#oasis1" label_next="Back to the Path"></script>
 
     <script src="/scripts/footer.js"></script>
 </body>
