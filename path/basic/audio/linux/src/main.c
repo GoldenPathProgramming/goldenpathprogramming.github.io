@@ -24,12 +24,13 @@ int main() {
         .rate = SAMPLING_RATE,
         .channels = 1
     };
+    const int bytes_per_sample = 2;
+    const int frame_size = PERIOD_SIZE * bytes_per_sample * sample_spec.channels;
     pa_buffer_attr buffer_attr = {
-        .maxlength = PERIOD_SIZE * 16,
-        .tlength = PERIOD_SIZE * 2,
-        .prebuf = PERIOD_SIZE * 2,
-        .minreq = UINT32_MAX,
-        .fragsize = PERIOD_SIZE * 2,
+        .maxlength = frame_size * 16,
+        .tlength = frame_size,
+        .prebuf = frame_size,
+        .fragsize = frame_size,
     };
     simple = pa_simple_new (NULL, "Golden Path", PA_STREAM_PLAYBACK, NULL, "playback", &sample_spec, NULL, &buffer_attr, &pulse_error);
     if (!simple) {
