@@ -99,6 +99,13 @@
             } break;</code>
     <p>This event is sent for mouse movement.</p>
 
+    <code>            case DestroyNotify: {
+                puts ("DestroyNotify");
+                const auto d = &e.xdestroywindow;
+                if (d->window == window) quit = true;
+            } break;</code>
+    <p>This event is sent when a window started by your process is destroyed. If you're sure you'll only ever have one window, you can skip the check. However, I recommend leaving the check in to avoid unexpected bugs later on. At one point, my game spawned an extra window for a workaround, and, when launched with the Steam overlay, that window got destroyed by the overlay somehow and sent my game a DestroyNotify event. I had to check whether it was the main window before deciding to quit the program to avoid instantly closing my game on launch.</p>
+
     <script src="/scripts/prev-next-step.js" path_prev="../../window/linux/" path_next="../../opengl/linux/"></script>
 
     <script src="/scripts/footer.js"></script>

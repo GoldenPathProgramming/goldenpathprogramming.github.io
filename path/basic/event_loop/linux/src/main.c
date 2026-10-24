@@ -44,7 +44,8 @@ int main () {
         switch (e.type) {
             case DestroyNotify: {
                 puts ("DestroyNotify");
-                quit = true;
+                const auto d = &e.xdestroywindow;
+                if (d->window == window) quit = true;
             } break;
 
             case ClientMessage: {
