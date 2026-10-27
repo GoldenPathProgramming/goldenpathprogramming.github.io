@@ -60,6 +60,10 @@
         case WM_SYSKEYUP:
         case WM_KEYUP: {
             bool key_down = (((DWORD)lParam & (1ull << 31)) == 0);
+            if (wParam == VK_MENU) {
+                if (lParam & (1ull << 24)) wParam = VK_RMENU;
+                else wParam = VK_LMENU;
+            }
             if (key_down && ((DWORD)lParam & (1ull << 30))) {
                 puts ("Key repeat");
                 break;
@@ -67,6 +71,7 @@
             printf ("Key %s %s\n", key_down ? "pressed" : "released", vk_print[wParam & 0xff]);
         } break;</code>
     <p>WM_KEYDOWN/UP are the normal key messages, but if ALT is being held, you'll receive the SYS versions instead. I like to just internally track the state of keys in my programs so I lump them together. Since I've combined up and down events, I retrieve the up/down state of the key from lParam, and check for key repeats (when holding a key causes more events to be sent). I've prepared the vk_print[] array of strings so we can print out the keys being pressed.</p>
+    <p>Whether left- or right-ALT is pressed, wParam will be VK_MENU. If you want to differentiate between them, you can check bit 24 of lParam. The bit is 1 for right-ALT, and 0 for left.</p>
 
     <code>        case WM_MOUSEWHEEL: printf ("Scroll %.2f\n", (float)GET_WHEEL_DELTA_WPARAM(wParam) / WHEEL_DELTA); break;</code>
     <p>Mouse scrolling is reported to us as an integer, where positive numbers are up on the wheel, and negative numbers are down. Most basic mice will cause a value of 120 (WHEEL_DELTA) per scroll notch, but mice which support high-precision scrolling, and touchpads, will report several events with smaller increments instead. We'll explore how to accumulate these values for games in a later step on the Path.</p>

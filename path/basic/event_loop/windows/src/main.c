@@ -60,6 +60,10 @@ static LRESULT CALLBACK WindowProc(HWND window_handle, UINT message, WPARAM wPar
                 puts ("Key repeat");
                 break;
             }
+            if (wParam == VK_MENU) {
+                if (lParam & (1ull << 24)) wParam = VK_RMENU;
+                else wParam = VK_LMENU;
+            }
             printf ("Key %s %s\n", key_down ? "pressed" : "released", vk_print[wParam & 0xff]);
         } break;
 
