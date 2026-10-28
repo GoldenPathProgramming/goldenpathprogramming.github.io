@@ -27,8 +27,7 @@ static void CalculateWavelength () {
 
 const char *HResultToStr (HRESULT result) {
     static char error_buffer[512];
-    DWORD len;  // Number of chars returned.
-    len = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, result, 0, error_buffer, 512, NULL);
+    const auto len = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, result, 0, error_buffer, 512, NULL);
     if (len == 0) snprintf (error_buffer, sizeof (error_buffer), "HRESULT error message not found");
     return error_buffer;
 }
