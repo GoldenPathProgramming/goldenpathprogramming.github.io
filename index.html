@@ -8,6 +8,29 @@
 <body>
     <script src="/scripts/header.js"></script>
 
+    <p>Last update: <a id="last-update" href="https://github.com/GoldenPathProgramming/goldenpathprogramming.github.io/commits/main/" target="_blank">Loading...</a></p>
+
+<script>
+  fetch(`https://api.github.com/repos/GoldenPathProgramming/goldenpathprogramming.github.io/commits?per_page=1`)
+    .then(response => {
+      if (!response.ok) throw new Error("Failed to retrieve commit");
+      document.getElementById("last-update").textContent = "Unknown";
+      return response.json();
+    })
+    .then(commits => {
+      const commit = commits[0];
+      const date = new Date(commit.commit.committer.date);
+
+      const link = document.getElementById("last-update");
+
+      link.textContent = date.toLocaleDateString();
+    })
+    .catch(error => {
+      document.getElementById("last-update").textContent = "Unknown";
+      console.error(error);
+    });
+</script>
+
     <div class="way" id="way0">Way of Setup</div>
     <table width="100%" style="table-layout:fixed;">
         <tr>
@@ -135,8 +158,6 @@
 
     <h2>The Path Walked, Yet Unwritten...</h2>
     <p>It will take me some time to write out every step of the Path, but, unlike other tutorial series, the code is essentially already written. The final code of the Path will be improved compared to the initial release of my game engine, but you may continue the Path immediately by exploring the NSMGEngine source code, which you downloaded in the "Sanity Check" step. NSMGE is the engine I used to <a href="https://store.steampowered.com/app/2572310/" target="_blank">release my commercial games on Steam,</a> and is what the Path is intended to teach. Below is a roadmap for the Path. It is a general outline of what I intend to create for the Path, but it is subject to change.</p>
-
-    <p>To see the progress of the Path, check the <a href="https://github.com/GoldenPathProgramming/goldenpathprogramming.github.io/commits/main/" target="_blank">git commit history.</a></p>
 
     <hr/>
     <ul>
