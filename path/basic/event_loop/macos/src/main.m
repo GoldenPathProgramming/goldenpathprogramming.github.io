@@ -151,9 +151,9 @@ int main () {
                         }
                     } break;
 
-                    case NSEventTypeKeyDown:
-                        pressed = false;
-                    case NSEventTypeKeyUp: {
+                    case NSEventTypeKeyUp:
+                        pressed = true;
+                    case NSEventTypeKeyDown: {
                         pass_event_along = false;
                         if ([e isARepeat]) {
                             printf ("Key repeat %s\n", KeycodeStr([e keyCode]));
