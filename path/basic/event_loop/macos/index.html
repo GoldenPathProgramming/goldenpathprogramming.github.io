@@ -157,6 +157,9 @@
     [app postEvent:event atStart:false];
 }</code>
     <p>The window can either be instantaneously resized, or "live resized" when the user drags the edges/corners. Whenever the window is finished resizing, we call our own SendResizeEvent function to send a user event with the new size. If we're live resizing, we avoid sending thousands of resize events by using this live_resizing member variable.</p>
+
+    <code>                if (pass_event_along) [app sendEvent:e];</code>
+    <p>By default, events should be passed along to AppKit with sendEvent. The only events we don't send are key down/up, which produce beep sounds when sent to AppKit.</p>
     
     <script src="/scripts/prev-next-step.js" path_prev="../../window/macos/" path_next="../../opengl/macos/"></script>
 
