@@ -151,7 +151,7 @@ int main () {
                     } break;
 
                     case NSEventTypeKeyUp:
-                        pressed = true;
+                        pressed = false;
                     case NSEventTypeKeyDown: {
                         pass_event_along = false;
                         if ([e isARepeat]) {
