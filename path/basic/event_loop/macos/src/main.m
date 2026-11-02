@@ -125,7 +125,6 @@ int main () {
                     case NSEventTypeRightMouseDragged:
                     case NSEventTypeOtherMouseDragged: {
                         if (e.window == nil) {
-                            // NOTE: Check this on multi-monitor! Is frame.origin relative to the monitor it's on, or the same as [e locationInWindow] when window is nil?
                             NSRect frame = [window frame];
                             NSPoint p = [e locationInWindow];
                             p.x -= frame.origin.x;
