@@ -6,7 +6,7 @@ static bool quit = false;
 static NSWindow *window;
 static NSApplication *app;
 
-enum { OSXUserEvent_WindowClose, OSXUserEvent_WindowResize, OSXUserEvent_LostFocus, };
+enum { OSXUserEvent_WindowClose, OSXUserEvent_WindowResize, OSXUserEvent_LostFocus, OSXUserEvent_GainedFocus, };
 
 @interface Delegate : NSObject<NSApplicationDelegate, NSWindowDelegate> @end
 @implementation Delegate {
@@ -23,7 +23,11 @@ enum { OSXUserEvent_WindowClose, OSXUserEvent_WindowResize, OSXUserEvent_LostFoc
 }
 -(void)windowDidResignKey:(NSNotification*)notification {
     NSEvent *event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:(NSPoint){0,0} modifierFlags:0 timestamp:[[NSProcessInfo processInfo] systemUptime] windowNumber:[window windowNumber] context:nil subtype:OSXUserEvent_LostFocus data1:0 data2:0];
-    [app postEvent:event atStart:false];
+    [app postEvent:event atStart:true];
+}
+-(void)windowDidBecomeKey:(NSNotification *)notification {
+    NSEvent *event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:(NSPoint){0,0} modifierFlags:0 timestamp:[[NSProcessInfo processInfo] systemUptime] windowNumber:[window windowNumber] context:nil subtype:OSXUserEvent_GainedFocus data1:0 data2:0];
+    [app postEvent:event atStart:true];
 }
 -(void)windowDidResize:(NSNotification *)notification {
     if (live_resizing) return;
@@ -54,6 +58,22 @@ enum { OSXUserEvent_WindowClose, OSXUserEvent_WindowResize, OSXUserEvent_LostFoc
 @end
 
 const char *KeycodeStr (uint8_t code);
+
+int8_t kVKToModkey (uint8_t keycode) {
+    switch (keycode) {
+        case kVK_CapsLock:     return 0; break;
+        case kVK_Shift:        return 1; break;
+        case kVK_RightShift:   return 2; break;
+        case kVK_Control:      return 3; break;
+        case kVK_RightControl: return 4; break;
+        case kVK_Option:       return 5; break;
+        case kVK_RightOption:  return 6; break;
+        case kVK_Command:      return 7; break;
+        case kVK_RightCommand: return 8; break;
+        case kVK_Function:     return 9; break;
+        default: return -1;
+    }
+}
 
 int main () {
     app = [NSApplication sharedApplication];
@@ -87,6 +107,9 @@ int main () {
     else [app activateIgnoringOtherApps:true];
 
     while (!quit) {
+        static const uint8_t modkeys_kvk[] = { kVK_CapsLock, kVK_Shift, kVK_RightShift, kVK_Control, kVK_RightControl, kVK_Option, kVK_RightOption, kVK_Command, kVK_RightCommand, kVK_Function };
+        static uint8_t modkeys[sizeof (modkeys_kvk) / sizeof(modkeys_kvk[0])];
+        
         @autoreleasepool {
             for (;;) {
                 NSEvent *e = [app nextEventMatchingMask:NSEventMaskAny untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:YES];
@@ -154,30 +177,22 @@ int main () {
                     } break;
 
                     case NSEventTypeFlagsChanged: {
-                        typedef union {
-                            struct {
-                                uint8_t alpha_shift:1;
-                                uint8_t shift:1;
-                                uint8_t control:1;
-                                uint8_t alternate:1;
-                                uint8_t command:1;
-                                uint8_t numeric_pad:1;
-                                uint8_t help:1;
-                                uint8_t function:1;
-                            };
-                            uint8_t mask;
-                        } osx_event_modifiers_t;
-                        static osx_event_modifiers_t mods_prev = {};
-                        osx_event_modifiers_t mods = {.mask = ([e modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask) >> 16};
-                        if (mods.alpha_shift ^ mods_prev.alpha_shift) printf ("Key %s Alpha Shift\n", mods.alpha_shift ? "pressed" : "released");
-                        if (mods.shift ^ mods_prev.shift) printf ("Key %s Shift\n", mods.shift ? "pressed" : "released");
-                        if (mods.control ^ mods_prev.control) printf ("Key %s Ctrl\n", mods.control ? "pressed" : "released");
-                        if (mods.alternate ^ mods_prev.alternate) printf ("Key %s Alt\n", mods.alternate ? "pressed" : "released");
-                        if (mods.command ^ mods_prev.command) printf ("Key %s Command\n", mods.command ? "pressed" : "released");
-                        if (mods.numeric_pad ^ mods_prev.numeric_pad) printf ("Key %s NumLock\n", mods.numeric_pad ? "pressed" : "released");
-                        if (mods.help ^ mods_prev.help) printf ("Key %s Help\n", mods.help ? "pressed" : "released");
-                        if (mods.function ^ mods_prev.function) printf ("Key %s Function\n", mods.function ? "pressed" : "released");
-                        mods_prev = mods;
+                        const uint8_t key_code = (uint8_t)[e keyCode];
+                        const int8_t modkeyi = kVKToModkey(key_code);
+                        if (modkeyi == -1) {
+                            puts ("Unsupported modifier key");
+                            break;
+                        }
+                        
+                        modkeys[modkeyi] = !modkeys[modkeyi];
+
+                        const NSEventModifierFlags flags = [e modifierFlags];
+
+                        static const int modkey_flagbit[sizeof (modkeys_kvk) / sizeof(modkeys_kvk[0])] = { NSEventModifierFlagCapsLock, NSEventModifierFlagShift, NSEventModifierFlagShift, NSEventModifierFlagControl, NSEventModifierFlagControl, NSEventModifierFlagOption, NSEventModifierFlagOption, NSEventModifierFlagCommand, NSEventModifierFlagCommand, NSEventModifierFlagFunction };
+                        if (!(flags & modkey_flagbit[modkeyi])) modkeys[modkeyi] = false;
+
+                        printf ("Key %s %s\n", KeycodeStr(key_code),
+                            modkeys[modkeyi] ? "pressed" : "released");
                     } break;
 
                     case NSEventTypeApplicationDefined: {
@@ -189,7 +204,17 @@ int main () {
 
                             case OSXUserEvent_WindowResize: printf ("Resize %d, %d\n", (int)[e data1], (int)[e data2]); break;
 
-                            case OSXUserEvent_LostFocus: puts ("Focus Out"); break;
+                            case OSXUserEvent_LostFocus: {
+                                puts ("Focus Out");
+                                memset (modkeys, 0, sizeof (modkeys));
+                            } break;
+
+                            case OSXUserEvent_GainedFocus: {
+                                puts ("Focus in");
+                                for (int i = 0; i < sizeof (modkeys) / sizeof (modkeys[0]); ++i) {
+                                    modkeys[i] = CGEventSourceKeyState (kCGEventSourceStateCombinedSessionState, (CGKeyCode)modkeys_kvk[i]);
+                                }
+                            } break;
 
                             default: puts ("Unknown user event?"); break;
                         }
@@ -209,6 +234,6 @@ int main () {
 }
 
 const char *KeycodeStr (uint8_t code) {
-    static const char *keycode_str[256] = { [kVK_ANSI_A] = "A", [kVK_ANSI_B] = "B", [kVK_ANSI_C] = "C", [kVK_ANSI_D] = "D", [kVK_ANSI_E] = "E", [kVK_ANSI_F] = "F", [kVK_ANSI_G] = "G", [kVK_ANSI_H] = "H", [kVK_ANSI_I] = "I", [kVK_ANSI_J] = "J", [kVK_ANSI_K] = "K", [kVK_ANSI_L] = "L", [kVK_ANSI_M] = "M", [kVK_ANSI_N] = "N", [kVK_ANSI_O] = "O", [kVK_ANSI_P] = "P", [kVK_ANSI_Q] = "Q", [kVK_ANSI_R] = "R", [kVK_ANSI_S] = "S", [kVK_ANSI_T] = "T", [kVK_ANSI_U] = "U", [kVK_ANSI_V] = "V", [kVK_ANSI_W] = "W", [kVK_ANSI_X] = "X", [kVK_ANSI_Y] = "Y", [kVK_ANSI_Z] = "Z", [kVK_ANSI_0] = "0", [kVK_ANSI_1] = "1", [kVK_ANSI_2] = "2", [kVK_ANSI_3] = "3", [kVK_ANSI_4] = "4", [kVK_ANSI_5] = "5", [kVK_ANSI_6] = "6", [kVK_ANSI_7] = "7", [kVK_ANSI_8] = "8", [kVK_ANSI_9] = "9", [kVK_Return] = "Enter", [kVK_Space] = "Space", [kVK_Escape] = "Escape", [kVK_LeftArrow] = "Left", [kVK_RightArrow] = "Right", [kVK_DownArrow] = "Down", [kVK_UpArrow] = "Up", [kVK_Option] = "Left ALt", [kVK_RightOption] = "Right Alt", [kVK_Control] = "Left Control", [kVK_RightControl] = "Right Control", [kVK_Home] = "Home", [kVK_End] = "End", [kVK_PageUp] = "Page Up", [kVK_PageDown] = "Page Down", [kVK_F1] = "F1", [kVK_F2] = "F2", [kVK_F3] = "F3", [kVK_F4] = "F4", [kVK_F5] = "F5", [kVK_F6] = "F6", [kVK_F7] = "F7", [kVK_F8] = "F8", [kVK_F9] = "F9", [kVK_F10] = "F10", [kVK_F11] = "F11", [kVK_F12] = "F12", [kVK_Delete] = "Backspace", [kVK_ForwardDelete] = "Delete", [kVK_Shift] = "Shift", [kVK_Tab] = "Tab", [kVK_ANSI_Quote] = "'", [kVK_ANSI_Comma] = ",", [kVK_ANSI_Minus] = "-", [kVK_ANSI_Period] = ".", [kVK_ANSI_Slash] = "/", [kVK_ANSI_Semicolon] = ";", [kVK_ANSI_Equal] = "=", [kVK_ANSI_LeftBracket] = "[", [kVK_ANSI_RightBracket] = "]", [kVK_ANSI_Backslash] = "\\", [kVK_ANSI_Grave] = "`" };
-    return keycode_str[code];
+    static const char *keycode_str[256] = { [kVK_ANSI_A] = "A", [kVK_ANSI_B] = "B", [kVK_ANSI_C] = "C", [kVK_ANSI_D] = "D", [kVK_ANSI_E] = "E", [kVK_ANSI_F] = "F", [kVK_ANSI_G] = "G", [kVK_ANSI_H] = "H", [kVK_ANSI_I] = "I", [kVK_ANSI_J] = "J", [kVK_ANSI_K] = "K", [kVK_ANSI_L] = "L", [kVK_ANSI_M] = "M", [kVK_ANSI_N] = "N", [kVK_ANSI_O] = "O", [kVK_ANSI_P] = "P", [kVK_ANSI_Q] = "Q", [kVK_ANSI_R] = "R", [kVK_ANSI_S] = "S", [kVK_ANSI_T] = "T", [kVK_ANSI_U] = "U", [kVK_ANSI_V] = "V", [kVK_ANSI_W] = "W", [kVK_ANSI_X] = "X", [kVK_ANSI_Y] = "Y", [kVK_ANSI_Z] = "Z", [kVK_ANSI_0] = "0", [kVK_ANSI_1] = "1", [kVK_ANSI_2] = "2", [kVK_ANSI_3] = "3", [kVK_ANSI_4] = "4", [kVK_ANSI_5] = "5", [kVK_ANSI_6] = "6", [kVK_ANSI_7] = "7", [kVK_ANSI_8] = "8", [kVK_ANSI_9] = "9", [kVK_Return] = "Enter", [kVK_Space] = "Space", [kVK_Escape] = "Escape", [kVK_LeftArrow] = "Left", [kVK_RightArrow] = "Right", [kVK_DownArrow] = "Down", [kVK_UpArrow] = "Up", [kVK_Option] = "Left ALt", [kVK_RightOption] = "Right Alt", [kVK_Control] = "Left Control", [kVK_RightControl] = "Right Control", [kVK_Home] = "Home", [kVK_End] = "End", [kVK_PageUp] = "Page Up", [kVK_PageDown] = "Page Down", [kVK_F1] = "F1", [kVK_F2] = "F2", [kVK_F3] = "F3", [kVK_F4] = "F4", [kVK_F5] = "F5", [kVK_F6] = "F6", [kVK_F7] = "F7", [kVK_F8] = "F8", [kVK_F9] = "F9", [kVK_F10] = "F10", [kVK_F11] = "F11", [kVK_F12] = "F12", [kVK_Delete] = "Backspace", [kVK_ForwardDelete] = "Delete", [kVK_Shift] = "Left Shift", [kVK_RightShift] = "Right Shift", [kVK_Tab] = "Tab", [kVK_ANSI_Quote] = "'", [kVK_ANSI_Comma] = ",", [kVK_ANSI_Minus] = "-", [kVK_ANSI_Period] = ".", [kVK_ANSI_Slash] = "/", [kVK_ANSI_Semicolon] = ";", [kVK_ANSI_Equal] = "=", [kVK_ANSI_LeftBracket] = "[", [kVK_ANSI_RightBracket] = "]", [kVK_ANSI_Backslash] = "\\", [kVK_ANSI_Grave] = "`", [kVK_Command] = "Left Command", [kVK_RightCommand] = "Right Command", [kVK_Function] = "Function", [kVK_CapsLock] = "Caps Lock", [kVK_ANSI_KeypadDecimal] = "KP Dot", [kVK_ANSI_KeypadMultiply] = "KP *", [kVK_ANSI_KeypadPlus] = "KP +", [kVK_ANSI_KeypadClear] = "KP Clear", [kVK_ANSI_KeypadDivide] = "KP /", [kVK_ANSI_KeypadEnter] = "KP Enter", [kVK_ANSI_KeypadMinus] = "KP -", [kVK_ANSI_KeypadEquals] = "KP =", [kVK_ANSI_Keypad0] = "KP 0", [kVK_ANSI_Keypad1] = "KP 1", [kVK_ANSI_Keypad2] = "KP 2", [kVK_ANSI_Keypad3] = "KP 3", [kVK_ANSI_Keypad4] = "KP 4", [kVK_ANSI_Keypad5] = "KP 5", [kVK_ANSI_Keypad6] = "KP 6", [kVK_ANSI_Keypad7] = "KP 7", [kVK_ANSI_Keypad8] = "KP 8", [kVK_ANSI_Keypad9] = "KP 9" };
+    return keycode_str[code] != NULL ? keycode_str[code] : "Unknown";
 }

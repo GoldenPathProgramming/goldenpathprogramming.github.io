@@ -40,35 +40,61 @@
                         printf ("Simple scroll %f\n", dy);
                     }
                 } break;</code>
-    <p>Scrolling on MacOS for games is a disaster. Mac uses "precise scrolling," which is great if you want to smoothly change a continuous value with the scroll wheel/ball (like moving around a map, say), but horrible for switching weapons with the scroll wheel in a shooter. You may just need to ask the user what kind of scrolling device they're using. Some old mice *might* send simple scrolls. Every modern, non-Apple mouse I've tried has sent a bunch of precise scroll events for each wheel notch. I don't own an Apple mouse, but apparently they'll send loads of tiny scrolls. The second case (non-Apple modern mice) can be handled fairly well by filtering out any events with a scrollingDeltaY of 0, then recording the last timestamp and ignoring subsequent events with the same timestamp. As for using Apple mice in the discrete way games tend to prefer: good luck!</p>
+    <p>Scrolling on MacOS for games is a disaster. Mac uses "precise scrolling," which is great if you want to smoothly change a continuous value with the scroll wheel/ball or touchpad (like moving around a map, say), but horrible for switching weapons with the scroll wheel in a shooter. You may just need to ask the user what kind of scrolling device they're using.</p>
+    <p>You'll either receive "simple" scrolls, or "precise" scrolls. Precise scrolls give you pixel values, intended for smooth scrolling around a page and stuff. Simple scrolls are filtered, accelerated values that macOS generates based on how quickly the scroll wheel was moved - so the wheel may be moved the same number of notches, but generate higher or lower numbers based on how quickly that was done! We'll explore a solution for filtering scrolls into discrete steps in a later step on the Path.</p>
 
-    <code>                    case NSEventTypeFlagsChanged: {
-                        typedef union {
-                            struct {
-                                uint8_t alpha_shift:1;
-                                uint8_t shift:1;
-                                uint8_t control:1;
-                                uint8_t alternate:1;
-                                uint8_t command:1;
-                                uint8_t numeric_pad:1;
-                                uint8_t help:1;
-                                uint8_t function:1;
-                            };
-                            uint8_t mask;
-                        } osx_event_modifiers_t;
-                        static osx_event_modifiers_t mods_prev = {};
-                        osx_event_modifiers_t mods = {.mask = ([e modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask) >> 16};
-                        if (mods.alpha_shift ^ mods_prev.alpha_shift) printf ("Key %s Alpha Shift\n", mods.alpha_shift ? "pressed" : "released");
-                        if (mods.shift ^ mods_prev.shift) printf ("Key %s Shift\n", mods.shift ? "pressed" : "released");
-                        if (mods.control ^ mods_prev.control) printf ("Key %s Ctrl\n", mods.control ? "pressed" : "released");
-                        if (mods.alternate ^ mods_prev.alternate) printf ("Key %s Alt\n", mods.alternate ? "pressed" : "released");
-                        if (mods.command ^ mods_prev.command) printf ("Key %s Command\n", mods.command ? "pressed" : "released");
-                        if (mods.numeric_pad ^ mods_prev.numeric_pad) printf ("Key %s NumLock\n", mods.numeric_pad ? "pressed" : "released");
-                        if (mods.help ^ mods_prev.help) printf ("Key %s Help\n", mods.help ? "pressed" : "released");
-                        if (mods.function ^ mods_prev.function) printf ("Key %s Function\n", mods.function ? "pressed" : "released");
-                        mods_prev = mods;
-                    } break;</code>
-    <p>Cocoa sets aside various keys like Alt, CTRL, etc. and sends them as a group of flags instead of normal key events. Here I record the last collective flag state and check for any changes each time this event comes in. Note that some of these keys represent different things on different types of keyboards.</p>
+    <code>-(void)windowDidBecomeKey:(NSNotification *)notification {
+    NSEvent *event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:(NSPoint){0,0} modifierFlags:0 timestamp:[[NSProcessInfo processInfo] systemUptime] windowNumber:[window windowNumber] context:nil subtype:OSXUserEvent_GainedFocus data1:0 data2:0];
+    [app postEvent:event atStart:false];
+}
+
+int8_t kVKToModkey (uint8_t keycode) {
+    switch (keycode) {
+        case kVK_Shift:        return 0; break;
+        case kVK_RightShift:   return 1; break;
+        case kVK_Control:      return 2; break;
+        case kVK_RightControl: return 3; break;
+        case kVK_Option:       return 4; break;
+        case kVK_RightOption:  return 5; break;
+        case kVK_Command:      return 6; break;
+        case kVK_RightCommand: return 7; break;
+        case kVK_Function:     return 8; break;
+        default: return -1;
+    }
+}
+
+        static const uint8_t modkeys_kvk[] = { kVK_Shift, kVK_RightShift, kVK_Control, kVK_RightControl, kVK_Option, kVK_RightOption, kVK_Command, kVK_RightCommand, kVK_Function };
+        static uint8_t modkeys[sizeof (modkeys_kvk) / sizeof(modkeys_kvk[0])];
+
+                    case NSEventTypeFlagsChanged: {
+                        const uint8_t key_code = (uint8_t)[e keyCode];
+                        const int8_t modkeyi = kVKToModkey(key_code);
+                        if (modkeyi == -1) {
+                            puts ("Unsupported modifier key");
+                            break;
+                        }
+                        
+                        modkeys[modkeyi] = !modkeys[modkeyi];
+
+                        const NSEventModifierFlags flags = [e modifierFlags];
+
+                        static const int modkey_flagbit[sizeof (modkeys_kvk) / sizeof(modkeys_kvk[0])] = { NSEventModifierFlagShift, NSEventModifierFlagShift, NSEventModifierFlagControl, NSEventModifierFlagControl, NSEventModifierFlagOption, NSEventModifierFlagOption, NSEventModifierFlagCommand, NSEventModifierFlagCommand, NSEventModifierFlagFunction };
+                        if (!(flags & modkey_flagbit[modkeyi])) modkeys[modkeyi] = false;
+
+                        printf ("Key %s %s\n", KeycodeStr(key_code),
+                            modkeys[modkeyi] ? "pressed" : "released");
+                    } break;
+
+                            case OSXUserEvent_GainedFocus: {
+                                puts ("Focus in");
+                                for (int i = 0; i < sizeof (modkeys) / sizeof (modkeys[0]); ++i) {
+                                    modkeys[i] = CGEventSourceKeyState (kCGEventSourceStateCombinedSessionState, (CGKeyCode)modkeys_kvk[i]);
+                                }
+                            } break;</code>
+    <p>Annoyingly, Cocoa handles keys such as ALT, CTRL, Command, and such, separately to regular keys, with the NSEventTypeFlagsChanged event. It contains the keycode, [e keyCode], of the key that has been pressed or released, but it <i>does not</i> say whether the key was pressed or released. It <i>does</i> contain a set of flags, obtainable with [e modifierFlags], but each flag relates to multiple keys - a single control flag for both control keys, for example. A reasonable way to handle these is by checking the current state of the relevant key whenever this event is received, with CGEventSourceKeyState. However, this has the issue that, if a key is pressed and released before the press event is handled, the press event will be treated as a release event.</p>
+    <p>My solution is to keep track of the state of these keys in an array, modkeys, and swap the state of the given key every time we receive an NSEventTypeFlagsChanged event of that key. If the user tabs out of the window while holding one of these keys, then releases the key while in a different window, our program will still think the key is held. To solve that, we check the state of all modifier keys whenever the window regains focus.</p>
+    <p>It is still theoretically possible for the keys to become out of sync, so we check the flag state whenever we receive the NSEventTypeFlagsChanged event, and reset the given key to released if the flag is clear. With this, it's only possible for the key state to be out of sync if the user has pressed both keys, keeps one held, and the program hits a random lag spike when tabbing in, during which the user releases one of the keys. It's not perfect, but it's close enough. Let me know if you discover a truly 100% robust way to handle these keys!</p>
+    <p>CAPSLOCK NOTE: Since CapsLock is a toggle, we only receive an NSEventTypeFlagsChanged whenever the key is pressed, but not when it is released. We also don't receive this event at all if the key is tapped very briefly, since macOS filters this out to prevent accidental toggling. It may or may not be appropriate for your game to support using the CapsLock key - if you use it, you could either treat it as a toggle, or as a key that can only be tapped, not held (by treating each capslock event as an instantaneous press+release).</p>
 
     <code>                case NSEventTypeApplicationDefined: {
                     switch ([e subtype]) {
