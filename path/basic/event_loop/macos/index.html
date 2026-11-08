@@ -24,6 +24,9 @@
     <code>clang main.m -fobjc-arc -framework Cocoa</code>
     <hr/>
 
+    <code>#import <Carbon/Carbon.h></code>
+    <p>We really only need one header file from this framework - HiToolblox/Events.h, which can be found at: [macOS SDK]/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/HIToolbox.framework/Headers/Events.h. You could use the full system path of that file and #import it, but I'd rather conform to OBJC's intended methods and just #import the "umbrella" framework, Carbon.h, which then goes on to import this header. It contains all the kVK key codes we need.</p>
+
     <p>Most events are self-explanatory, but I'll explore a few.</p>
 
     <code>                case NSEventTypeScrollWheel: {

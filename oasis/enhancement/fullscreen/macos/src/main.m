@@ -1,9 +1,8 @@
 #include <AppKit/NSWindow.h>
 #import <Cocoa/Cocoa.h>
+#import <Carbon/Carbon.h>
 #include <stdbool.h>
 #include <stdio.h>
-
-enum { kVK_ANSI_B = 0x0B, kVK_Return = 0x24, kVK_Escape = 0x35 };
 
 static bool quit = false;
 static NSWindow *window;
