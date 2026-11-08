@@ -31,8 +31,10 @@
 
     <script src="/scripts/embed-code.js" data-src="src/main.m"></script>
     <p>Copy the above code into a file and name it main.m. Then open a terminal in the same directory and run the following command:</p>
-    <code>clang main.m -framework Cocoa</code>
+    <code>clang main.m -fobjc-arc -framework Cocoa</code>
     <hr/>
+
+    <p>Before any code, the first thing to note is the compiler flag, -fobjc-arc. Objective-C has a feature called <a href="https://clang.llvm.org/docs/AutomaticReferenceCounting.html" target="_blank">Automatic Reference Counting.</a> This seems to be standard among ObjC programmers, and helps to prevent memory leaks with ObjC objects by automatically inserting [retain] and [release] calls.</p>
 
     <code>#import &lt;Cocoa/Cocoa.h></code>
     <p>Cocoa is the extremely featureful framework for developing GUI apps on MacOS and iOS. It includes the ObjC runtime library, and multiple layers of Apple stuff. Huge, but fairly convenient. Built atop NeXTSTEP technologies from the late 80s, and still well-supported today. Apple has been pushing the Swift programming language and SwiftUI, but SwiftUI is built on Cocoa and ObjC is unlikely to be retired for the forseeable future.</p>

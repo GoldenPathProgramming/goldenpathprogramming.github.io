@@ -1,5 +1,5 @@
 // Build with:
-// clang main.m -std=gnu2y -framework Cocoa -framework OpenGL
+// clang main.m -fobjc-arc -std=gnu2y -framework Cocoa -framework OpenGL
 #define GL_SILENCE_DEPRECATION
 #import <Cocoa/Cocoa.h>
 #include <OpenGL/glu.h>
