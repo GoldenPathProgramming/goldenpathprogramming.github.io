@@ -33,11 +33,11 @@
     <p>You shouldn't see any output in your terminal, but in the folder an a.exe file should have been created. This is your executable binary file. Run it with ./a.exe (or double-click it). You should see a blank window pop up, then close after 5 seconds.</p>
     <hr/>
 
-    <code><text>#define UNICODE
+    <code>#define UNICODE
 #define _UNICODE
 #include &lt;windows.h>
 #include &lt;assert.h>
-#include &lt;stdio.h></text></code>
+#include &lt;stdio.h></code>
     <p>windows.h defines most of what we need. Win32 has gone through many changes over the years, and it was initially designed without unicode. While UTF-8 is clearly the best character encoding, and most widely used today, Microsoft decided to implement UTF-16 instead. You'll find various Win32 functions with a trailing A or W, for ANSI or Wide (UTF-16). I recommend you always target the unicode API, which can be ensured by defining the two UNICODE macros above. I've chosen to include assertions as a way to help you catch bugs as you follow the Path, so you'll see them often.</p>
 
     <code>int main() {</code>

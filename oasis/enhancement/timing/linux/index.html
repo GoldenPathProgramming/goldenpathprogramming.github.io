@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/scripts/head.js"></script>
+</head>
+
+<body>
+    <script src="/scripts/header.js"></script>
+
+    <h2>Precise timing on Linux</h2>
+
+    <h3 style="text-align:left;">References</h3>
+    <ul>
+        <li><a href="https://www.man7.org/linux/man-pages/man3/clock_gettime.3.html" target="_blank">clock_gettime</a></li>
+    </ul>
+
+    <script src="/scripts/embed-code.js" data-src="src/main.c"></script>
+
+    <p>Build with:</p>
+    <code>gcc main.c</code>
+    <hr/>
+
+    <code>#include &lt;time.h>
+
+int64_t Timeus () {
+    struct timespec t;
+    clock_gettime (CLOCK_MONOTONIC, &t);
+    int64_t ticks = t.tv_sec * 1000000000ull + t.tv_nsec;
+    return ticks / 1000;
+}</code>
+    <p>clock_gettime is the POSIX standard way of measuring time. We use CLOCK_MONOTONIC, which is a clock starting from some arbitrary time in the past, guaranteed to never go backward between calls. We get back a struct timespec, which has the two components of seconds and nanoseconds. We combine the two into a single value in microseconds, which will be more than precise enough for any timing or profiling in a game.</p>
+
+    <p>It's important to pay attention to the details when combining these numbers. tv_sec and tv_nsec are both of type long, which in C is <i>at least</i> 32 bits. I've found that, on modern 64-bit Linux, longs are 64 bits. Since we're multipling a 64-bit integer by 1 billion, then storing it as a 64-bit integer, there is a possibliity of overflow. However, on Linux, CLOCK_MONOTONIC is specified as measuring time since the system was booted. So, as long as the user's PC has not been running for more than 292 years, this will not overflow.</p>
+
+    <p>clock_gettime does return an int: 0 for success, -1 for failure, with errno set. However, I have never known this function to fail, so I skip the check.</p>
+
+    <script src="/scripts/prev-next-step.js" path_next="/#oasis2" label_next="Back to the Path"></script>
+
+    <script src="/scripts/footer.js"></script>
+</body>
+
+</html>

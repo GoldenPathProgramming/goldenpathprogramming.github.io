@@ -84,7 +84,7 @@
     <p>Here we create an XEvent to send to the window manager. XEvent is a tagged union, the tag being the "type." So we mark this event as a ClientMessage, and fill it out with the relevant data for _NET_WM_STATE. l[0] is the action: _NET_WM_STATE_REMOVE (0), _NET_WM_STATE_ADD (1), or _NET_WM_STATE_TOGGLE (2). l[1] is the atom to use for the action. l[2] is the second property to alter (you may alter two properties at once). l[3] is the source of the message (1 is for normal applications).</p>
     <p>Notably, you could just use _NET_WM_STATE_TOGGLE instead of checking the fullscreen state. I implemented it this way (check first, then set or remove the property) since you'll probably want to track whether your window is fullscreen, rather than just blindly toggling it.</p>
 
-    <script src="/scripts/prev-next-step.js" path_next="/#oasis1" label_next="Back to the Path"></script>
+    <script src="/scripts/prev-next-step.js" path_next="/#oasis2" label_next="Back to the Path"></script>
 
     <script src="/scripts/footer.js"></script>
 </body>

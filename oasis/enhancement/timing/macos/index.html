@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/scripts/head.js"></script>
+</head>
+
+<body>
+    <script src="/scripts/header.js"></script>
+
+    <h2>Precise timing on macOS</h2>
+
+    <h3 style="text-align:left;">References</h3>
+    <ul>
+        <li><a href="https://www.unix.com/man_page/mojave/3/clock_gettime_nsec_np/" target="_blank">clock_gettime_nsec_np</a></li>
+        <li><a href="https://developer.apple.com/documentation/kernel/1462446-mach_absolute_time" target="_blank">mach_absolute_time</a></li>
+    </ul>
+
+    <script src="/scripts/embed-code.js" data-src="src/main.c"></script>
+
+    <p>Build with:</p>
+    <code>clang main.c</code>
+    <hr/>
+
+    <code>#include &lt;time.h>
+
+int64_t Timeus () {
+    const uint64_t tnsec = clock_gettime_nsec_np (CLOCK_UPTIME_RAW);
+    return tnsec / 1000ull;
+}</code>
+    <p>clock_gettime_nsec_np is a macOS-specific extension to time.h. We use CLOCK_UPTIME_RAW, which is a clock starting from system boot, guaranteed to never go backward between calls. We get back the time in nanoseconds, which we convert to microseconds - plenty of precision for games.</p>
+
+    <p>You may find macOS example code using mach_absolute_time(). The official Apple documentation of this function states: "Prefer to use the equivalent clock_gettime_nsec_np(CLOCK_UPTIME_RAW)". Before I read that note, I was using mach_absolute_time. Then my friend ran NSMG on their m2 macbook, running macOS 13, and had crazy timing bugs. These were entirely resolved by switching to clock_gettime_nsec_np (CLOCK_UPTIME_RAW).</p>
+
+    <script src="/scripts/prev-next-step.js" path_next="/#oasis2" label_next="Back to the Path"></script>
+
+    <script src="/scripts/footer.js"></script>
+</body>
+
+</html>

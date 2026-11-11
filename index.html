@@ -32,7 +32,7 @@
 </script>
 
     <div class="way" id="way0">Way of Setup</div>
-    <table width="100%" style="table-layout:fixed;">
+    <table width="100%" class="front-page-grid">
         <tr>
             <th></th>
             <th>Linux</th>
@@ -54,7 +54,7 @@
     </table>
 
     <div class="oasis" id="oasis0">Oasis - Easier Developing and Debugging</div>
-    <table width="100%" style="table-layout:fixed;">
+    <table width="100%" class="front-page-grid">
         <tr>
             <th></th>
             <th>Linux</th>
@@ -74,7 +74,7 @@
     <br/><hr/>
 
     <h2 id="way1">Way of Basics</h2>
-    <table width="100%" style="table-layout:fixed;">
+    <table width="100%" class="front-page-grid">
         <tr>
             <th></th>
             <th>Linux</th>
@@ -107,8 +107,32 @@
         </tr>
     </table>
 
-    <h2 id="oasis1">Oasis - Foundations</h2>
-    <table width="100%" style="table-layout:fixed;">
+    <h2 id="oasis2">Oasis - OS Foundations</h2>
+    <table width="100%" class="front-page-grid">
+        <tr>
+            <th></th>
+            <th>Linux</th>
+            <th>Windows</th>
+            <th>MacOS</th>
+        </tr>
+        <tr>
+            <td>Toggling fullscreen (borderless, not exclusive)</td>
+            <td><a href="/oasis/enhancement/fullscreen/linux/" class="table-button"></a></td>
+            <td><a href="/oasis/enhancement/fullscreen/windows/" class="table-button"></a></td>
+            <td><a href="/oasis/enhancement/fullscreen/macos/" class="table-button"></a></td>
+        </tr>
+        <tr>
+            <td>Precise timing</td>
+            <td><a href="/oasis/enhancement/timing/linux/" class="table-button"></a></td>
+            <td><a href="/oasis/enhancement/timing/windows/" class="table-button"></a></td>
+            <td><a href="/oasis/enhancement/timing/macos/" class="table-button"></a></td>
+        </tr>
+    </table>
+
+    <div class="reflection"><a href="/reflection/1/why_not_sdl/">Reflections - Why Not Use a Platform Library Like SDL?</a></div>
+
+    <h2 id="oasis1">Oasis - OpenGL Foundations</h2>
+    <table width="100%" class="front-page-grid">
         <tr>
             <th></th>
             <th>Linux</th>
@@ -140,19 +164,12 @@
             <td colspan="3"><a href="/oasis/enhancement/opengl_shaders/" class="table-button"></a></td>
         </tr>
         <tr>
-            <td>Toggling fullscreen (borderless, not exclusive)</td>
-            <td><a href="/oasis/enhancement/fullscreen/linux/" class="table-button"></a></td>
-            <td><a href="/oasis/enhancement/fullscreen/windows/" class="table-button"></a></td>
-            <td><a href="/oasis/enhancement/fullscreen/macos/" class="table-button"></a></td>
-        </tr>
-        <tr>
             <td>Drawing pixels with OpenGL 2.1</td>
             <td colspan="3"><a href="/oasis/enhancement/opengl_pixels/" class="table-button"></a></td>
         </tr>
     </table>
 
     <div class="reflection" id="reflections1"><a href="/reflection/1/recursive_descent/">Reflections - How to Know What to Code</a></div>
-    <div class="reflection"><a href="/reflection/1/why_not_sdl/">Reflections - Why Not Use a Platform Library Like SDL?</a></div>
 
     <br/><hr/><hr/>
 
@@ -161,7 +178,7 @@
 
     <hr/>
     <ul>
-        <li>Vsync with OpenGL</li>
+        <li>Vsync with OpenGL</li> <!-- Requires precise timing (to measure framerate) and *maybe* text rendering (or get creative with the fps display) -->
         <li>Hiding the mouse cursor</li>
         <li>Filtering precise mouse scrolling for games</li>
         <li>Creating threads with pthread</li>

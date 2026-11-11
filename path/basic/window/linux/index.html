@@ -28,9 +28,9 @@
     <p>You shouldn't see any output in your terminal, but in the folder an a.out file should have been created. This is your executable binary file. Run it with ./a.out. You should see a 640x480 window pop up with a greyish-purple background, then close after 5 seconds.</p>
     <hr/>
 
-    <code><text>#include &lt;X11/Xlib.h>
+    <code>#include &lt;X11/Xlib.h>
 #include &lt;unistd.h>
-#include &lt;assert.h></text></code>
+#include &lt;assert.h></code>
     <p>The X11 folder contains all the Xlib headers we'll use for window management on Linux. Xlib.h is the main one - we'll use a few more in future for special functionality. unistd is included for the sleep() function, and assert for assertions. I've chosen to include assertions as a way to help you catch bugs as you follow the Path, so you'll see them often.</p>
 
     <code>    const auto display = XOpenDisplay (0);

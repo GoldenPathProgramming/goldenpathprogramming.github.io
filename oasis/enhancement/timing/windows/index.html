@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/scripts/head.js"></script>
+</head>
+
+<body>
+    <script src="/scripts/header.js"></script>
+
+    <h2>Opening a Window with Win32 on Windows</h2>
+
+    <h3 style="text-align:left;">References</h3>
+    <ul>
+        <li><a href="https://learn.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancefrequency" target="_blank">QueryPerformanceFrequency</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancecounter" target="_blank">QueryPerformanceCounter</a></li>
+    </ul>
+
+    <script src="/scripts/embed-code.js" data-src="src/main.c"></script>
+    <p>Build with:</p>
+    <code>gcc main.c</code>
+    <hr/>
+
+    <code>int64_t Timeus () {
+    static int64_t ticks_per_microsecond;
+	if (ticks_per_microsecond == 0) {
+		LARGE_INTEGER frequency;
+		QueryPerformanceFrequency (&frequency);
+		ticks_per_microsecond = frequency.QuadPart / 1000000ll;
+	}
+
+	LARGE_INTEGER ticks;
+	QueryPerformanceCounter (&ticks);
+	return ticks.QuadPart / ticks_per_microsecond;
+}</code>
+    <p>QueryPerformanceCounter gives us access to a high resolution, fixed-rate timer. It is guaranteed to be supported on any Windows version starting with XP. The tick-rate of the counter is arbitrary, determined by Windows at boot, and does not change. We have to retrieve that tick-rate once, with QueryPerformanceFrequency. This tick-rate is in ticks per second, so we convert to ticks per microsecond, then use the resulting value whenever we retrieve the counter to convert it from ticks to microseconds.</p>
+
+    <script src="/scripts/prev-next-step.js" path_next="/#oasis2" label_next="Back to the Path"></script>
+
+    <script src="/scripts/footer.js"></script>
+</body>
+
+</html>
