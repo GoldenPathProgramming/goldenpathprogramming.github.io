@@ -30,7 +30,7 @@ int main() {
         .maxlength = frame_size * 16,
         .tlength = frame_size,
         .prebuf = frame_size,
-        .fragsize = frame_size,
+        .minreq = frame_size,
     };
     simple = pa_simple_new (NULL, "Golden Path", PA_STREAM_PLAYBACK, NULL, "playback", &sample_spec, NULL, &buffer_attr, &pulse_error);
     if (!simple) {
