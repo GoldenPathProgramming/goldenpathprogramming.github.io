@@ -6,7 +6,7 @@
 #include <termios.h>
 
 #define SAMPLING_RATE 48000
-#define PERIOD_SIZE (SAMPLING_RATE / 200)
+#define PERIOD_SIZE (SAMPLING_RATE / 100)
 
 static int frequency = 440;
 static int wavelength = SAMPLING_RATE / 440;
